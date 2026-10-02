@@ -22,11 +22,20 @@ B2B ordering portal for The Haze Connect and Totally Baked wholesale accounts. O
 - **Buyers** are invited by their rep (or an admin) with "Can place orders" or "View inventory only". Invite links last 7 days. Buyers always see their account's tier; the preview strip and `?level=` are ignored for them.
 - Email is sent from the Workspace mailbox in `MAIL_SENDER` through the Gmail API (a service account with domain-wide delegation for `gmail.send`, key in `GMAIL_SERVICE_ACCOUNT_JSON`). Railway Hobby blocks outbound SMTP, so SMTP with an app password is only a fallback for hosts that allow it. With neither set, emails print to the server log.
 
+## Checkout and orders (phase 1, step 3)
+
+- **Server-side pricing**: the cart is re-priced from the account's tier and HQ stock when submitted; browser prices are never trusted. If the total changed, the buyer is asked to review before anything is charged.
+- **Card** (Authorize.net Accept.js): card details go from the browser straight to Authorize.net as a one-time token. The order is recorded, the card is charged for the total plus the 3% fee, and the order is approved and sent to Order Time. A declined card removes the order and releases the stock. Payments Authorize.net holds for review wait for an admin.
+- **ACH / wire**: the order waits on payment. Buyers see the instructions admins enter on the Orders page. An admin clicks "Payment received: approve" to approve it, earn commission and send it to Order Time; unpaid orders can be cancelled.
+- **Order Time**: sales orders are created with the customer, rep, PO, lines (bulk in 1/4LB, 1/2LB, LB units) and a memo with the payment details. Set `ORDERTIME_CARD_FEE_ITEM_ID` to add the card fee as its own line. Failures are saved on the order and admins can retry.
+- **Commission** entries are written with every order (pending until paid, earned when paid).
+- **Emails**: buyer confirmation and a new-order alert to `ORDER_ALERT_EMAIL` (defaults to `MAIL_SENDER`).
+- Free shipping, no minimum, no sales tax (resale). Reps and admins pick the shop they're ordering for.
+
 ## Next steps
 
-1. Checkout: Authorize.net card payments (instant approval) and ACH/wire (manual approval), posting sales orders to Order Time.
-2. Admin console: announcements, accounts, order queue, commission ledger and payouts.
-3. Rep commissions view.
+1. Admin console: announcements, accounts, commission ledger and payouts.
+2. Rep commissions view.
 
 ## Run locally
 

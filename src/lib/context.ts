@@ -20,6 +20,15 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 export async function shopContext(user: SessionUser, params: Params): Promise<ShopContext> {
   if (user.role === 'ADMIN') {
+    // Admins can order for any active account with ?for=<account id>
+    const forId = Number(one(params.for));
+    if (forId) {
+      const acct = await db.account.findUnique({ where: { id: forId }, include: { priceLevel: true } });
+      if (acct && acct.status === 'ACTIVE') {
+        const level = acct.priceLevel?.name ?? null;
+        return { level, account: { id: acct.id, name: acct.name, tier: level ?? 'Base price' }, repAccounts: [], canOrder: true, carry: `?for=${acct.id}` };
+      }
+    }
     const level = levelParam(params.level);
     return { level, account: null, repAccounts: [], canOrder: true, carry: level ? `?level=${encodeURIComponent(level)}` : '' };
   }
