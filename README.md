@@ -43,7 +43,7 @@ npm test
 1. New project → Deploy from GitHub → this repo.
 2. Add a **Postgres** service; Railway sets `DATABASE_URL`.
 3. Set the variables in `.env.example` on the web service (generate `SESSION_SECRET` with `openssl rand -base64 48`). Never commit real credentials.
-4. Each deploy creates or updates the database tables automatically (`railway.json` pre-deploy step).
+4. The app creates or updates its database tables each time it starts (`npm start` runs `prisma db push`).
 5. The app syncs Order Time at startup and every 5 minutes on its own (`src/instrumentation.ts`). Set `ORDERTIME_SYNC_MINUTES` to change the interval, or `DISABLE_ORDERTIME_SYNC=1` to turn it off.
 
 ## Order Time notes

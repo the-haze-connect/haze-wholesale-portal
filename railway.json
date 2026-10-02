@@ -1,8 +1,9 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
-  "build": { "buildCommand": "npm run build" },
+  "build": {
+    "buildCommand": "npm run build"
+  },
   "deploy": {
-    "preDeployCommand": ["npx prisma db push --skip-generate"],
     "startCommand": "npm start",
     "healthcheckPath": "/login",
     "restartPolicyType": "ON_FAILURE"
