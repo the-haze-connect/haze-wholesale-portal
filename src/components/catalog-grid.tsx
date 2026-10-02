@@ -8,7 +8,7 @@ import { STOCK_LABEL, TILE, money } from './format';
 const CATEGORIES = ['All', 'Flower', 'Pre-Rolls', 'Vapes', 'Concentrates', 'Edibles', 'Bulk Flower'];
 const BRANDS = [['ALL', 'Both brands'], ['HAZE', 'The Haze Connect'], ['TOTALLY_BAKED', 'Totally Baked']] as const;
 
-export function CatalogGrid({ items, initialCategory = 'All' }: { items: CatalogItem[]; initialCategory?: string }) {
+export function CatalogGrid({ items, canOrder, initialCategory = 'All' }: { items: CatalogItem[]; canOrder: boolean; initialCategory?: string }) {
   const [cat, setCat] = useState(initialCategory);
   const [brand, setBrand] = useState<string>('ALL');
   const [q, setQ] = useState('');
@@ -49,7 +49,7 @@ export function CatalogGrid({ items, initialCategory = 'All' }: { items: Catalog
         <span style={{ marginLeft: 'auto', color: 'var(--ink-3)', fontSize: 14 }}>{shown.length} of {items.length} products</span>
       </div>
       {shown.length ? (
-        <div className="grid">{shown.map(i => <ProductCard key={i.id} item={i} />)}</div>
+        <div className="grid">{shown.map(i => <ProductCard key={i.id} item={i} canOrder={canOrder} />)}</div>
       ) : (
         <p className="empty">No products match these filters.</p>
       )}
@@ -57,7 +57,7 @@ export function CatalogGrid({ items, initialCategory = 'All' }: { items: Catalog
   );
 }
 
-function ProductCard({ item }: { item: CatalogItem }) {
+function ProductCard({ item, canOrder }: { item: CatalogItem; canOrder: boolean }) {
   const cart = useCart();
   const [uom, setUom] = useState(item.options[item.options.length - 1].uom);
   const opt = item.options.find(o => o.uom === uom) ?? item.options[0];
@@ -86,7 +86,7 @@ function ProductCard({ item }: { item: CatalogItem }) {
           <b>{money(opt.price)} <small>/ {item.isBulk ? opt.label : 'case'}</small></b>
           {item.msrp ? <small>MSRP {money(item.msrp)}</small> : null}
         </div>
-        {item.stock === 'out' ? (
+        {!canOrder ? null : item.stock === 'out' ? (
           <button type="button" className="notify" disabled title="Restock alerts arrive with sign-in">Notify me when back</button>
         ) : (
           <div className="buy">
