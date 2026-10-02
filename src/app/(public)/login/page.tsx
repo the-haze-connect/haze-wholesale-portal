@@ -41,6 +41,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                 <p style={{ margin: 0, color: 'var(--ink-2)' }}>Enter the email on your wholesale account and we’ll send you a one-time sign-in link.</p>
                 {error === 'expired' && <p className="note-warn">That link expired or was already used. Request a new one.</p>}
                 {error === 'email' && <p className="note-warn">Enter a valid email address.</p>}
+                {error === 'mail' && <p className="note-warn">We couldn’t send email just now. Try again in a few minutes, or contact your rep.</p>}
                 {error === 'busy' && <p className="note-warn">Too many requests for this email. Wait a few minutes and try again.</p>}
                 <form action={requestLoginLink} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div className="field">

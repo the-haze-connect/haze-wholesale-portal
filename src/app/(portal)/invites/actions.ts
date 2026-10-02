@@ -16,7 +16,13 @@ async function sendInvite(email: string, heading: string, intro: string) {
     heading, intro, button: 'Open Haze Wholesale', url: `${appUrl()}/auth/verify?token=${token}`,
     note: `This link works once and expires in ${INVITE_DAYS} days. After that, sign in any time with your email at ${appUrl()}/login.`,
   });
-  await sendMail(email, heading, text, html);
+  try {
+    await sendMail(email, heading, text, html);
+    return true;
+  } catch (err) {
+    console.error('[mail] invite failed:', err instanceof Error ? err.message : err);
+    return false;
+  }
 }
 
 /** Reps invite buyers for their own shops; admins for any shop. */
@@ -45,9 +51,10 @@ export async function inviteBuyer(_: InviteResult | null, form: FormData): Promi
     create: { email, name, role, accountId: account.id, invitedBy: me.id },
     update: { name: name ?? undefined, role },
   });
-  await sendInvite(email, `You're invited to order from The Haze Connect`, `${me.name ?? 'Your rep'} set up wholesale ordering for ${account.name}. Browse live inventory at your price and order cases in a few taps.`);
+  const sent = await sendInvite(email, `You're invited to order from The Haze Connect`, `${me.name ?? 'Your rep'} set up wholesale ordering for ${account.name}. Browse live inventory at your price and order cases in a few taps.`);
   await db.auditLog.create({ data: { actor: me.email, action: 'invite.buyer', detail: { email, accountId: account.id, role } } });
   revalidatePath('/invites');
+  if (!sent) return { ok: false, message: `Login created for ${email}, but the email didn't send. Use Resend in a few minutes.` };
   return { ok: true, message: `Invite sent to ${email}.` };
 }
 
@@ -64,9 +71,10 @@ export async function inviteRep(_: InviteResult | null, form: FormData): Promise
   if (existing && existing.role !== 'REP') return { ok: false, message: 'That email already has a different kind of login.' };
 
   await db.buyerUser.upsert({ where: { email }, create: { email, name: name ?? rep.name, role: 'REP', repId: rep.id, invitedBy: me.id }, update: { repId: rep.id, name: name ?? undefined } });
-  await sendInvite(email, 'Your Haze Wholesale rep login', `You can now see your accounts, place orders for your shops, and invite their buyers.`);
+  const sent = await sendInvite(email, 'Your Haze Wholesale rep login', `You can now see your accounts, place orders for your shops, and invite their buyers.`);
   await db.auditLog.create({ data: { actor: me.email, action: 'invite.rep', detail: { email, repId: rep.id } } });
   revalidatePath('/invites');
+  if (!sent) return { ok: false, message: `Rep login created for ${email}, but the email didn't send. Try again in a few minutes.` };
   return { ok: true, message: `Rep login sent to ${email}.` };
 }
 

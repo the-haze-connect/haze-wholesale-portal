@@ -20,7 +20,7 @@ B2B ordering portal for The Haze Connect and Totally Baked wholesale accounts. O
 - **Admins** are the emails in `ADMIN_EMAILS`; their login is created on first sign-in.
 - **Reps** get a login from an admin (Invites → Add a rep login), tied to their Order Time rep record. They pick which of their shops they're ordering for, see that shop's prices, and invite buyers only at their own shops.
 - **Buyers** are invited by their rep (or an admin) with "Can place orders" or "View inventory only". Invite links last 7 days. Buyers always see their account's tier; the preview strip and `?level=` are ignored for them.
-- Email goes through Google Workspace SMTP; without SMTP settings, emails print to the server log.
+- Email is sent from the Workspace mailbox in `MAIL_SENDER` through the Gmail API (a service account with domain-wide delegation for `gmail.send`, key in `GMAIL_SERVICE_ACCOUNT_JSON`). Railway Hobby blocks outbound SMTP, so SMTP with an app password is only a fallback for hosts that allow it. With neither set, emails print to the server log.
 
 ## Next steps
 

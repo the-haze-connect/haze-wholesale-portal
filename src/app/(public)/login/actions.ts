@@ -30,7 +30,12 @@ export async function requestLoginLink(form: FormData) {
       url,
       note: 'This link works once and expires in 15 minutes. If you didn’t ask for it, you can ignore this email.',
     });
-    await sendMail(email, 'Your Haze Wholesale sign-in link', text, html);
+    try {
+      await sendMail(email, 'Your Haze Wholesale sign-in link', text, html);
+    } catch (err) {
+      console.error('[mail] sign-in link failed:', err instanceof Error ? err.message : err);
+      redirect('/login?error=mail');
+    }
   }
   redirect('/login?sent=1');
 }

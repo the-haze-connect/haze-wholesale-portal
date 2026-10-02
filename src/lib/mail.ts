@@ -1,22 +1,88 @@
 import 'server-only';
+import { createSign } from 'node:crypto';
 import nodemailer from 'nodemailer';
+import MailComposer from 'nodemailer/lib/mail-composer';
 
 /**
- * Sends through Google Workspace SMTP (smtp.gmail.com) with an app password
- * for the sending mailbox. Without SMTP settings (local development) the
- * message is printed to the server log instead.
+ * Sends email from the Google Workspace mailbox in MAIL_SENDER (falls back to SMTP_USER).
+ *
+ * 1. Gmail API (preferred): set GMAIL_SERVICE_ACCOUNT_JSON to a Google Cloud service-account key
+ *    that has domain-wide delegation for https://www.googleapis.com/auth/gmail.send. Works over
+ *    HTTPS, so it runs on Railway plans that block outbound SMTP.
+ * 2. SMTP with an app password (SMTP_HOST / SMTP_USER / SMTP_PASSWORD), with short timeouts.
+ * 3. Neither set (local development): the message is printed to the server log.
  */
 export async function sendMail(to: string, subject: string, text: string, html: string) {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, MAIL_FROM } = process.env;
+  const sender = process.env.MAIL_SENDER || process.env.SMTP_USER || '';
+  const from = process.env.MAIL_FROM || `Haze Wholesale <${sender}>`;
+
+  if (process.env.GMAIL_SERVICE_ACCOUNT_JSON) {
+    await sendViaGmailApi(sender, { from, to, subject, text, html });
+    return;
+  }
+
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD } = process.env;
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASSWORD) {
     console.log(`\n[mail:dev] to=${to}\nsubject=${subject}\n${text}\n`);
     return;
   }
+  const port = Number(SMTP_PORT ?? 465);
   const transport = nodemailer.createTransport({
-    host: SMTP_HOST, port: Number(SMTP_PORT ?? 465), secure: Number(SMTP_PORT ?? 465) === 465,
+    host: SMTP_HOST, port, secure: port === 465,
     auth: { user: SMTP_USER, pass: SMTP_PASSWORD },
+    connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 15_000,
   });
-  await transport.sendMail({ from: MAIL_FROM ?? `Haze Wholesale <${SMTP_USER}>`, to, subject, text, html });
+  await transport.sendMail({ from, to, subject, text, html });
+}
+
+type Message = { from: string; to: string; subject: string; text: string; html: string };
+type ServiceAccount = { client_email: string; private_key: string };
+
+let cachedToken: { sender: string; token: string; expires: number } | null = null;
+
+const b64url = (b: Buffer | string) => Buffer.from(b).toString('base64url');
+
+async function gmailAccessToken(sender: string): Promise<string> {
+  if (cachedToken && cachedToken.sender === sender && cachedToken.expires > Date.now() + 60_000) return cachedToken.token;
+
+  const sa = JSON.parse(process.env.GMAIL_SERVICE_ACCOUNT_JSON!) as ServiceAccount;
+  const now = Math.floor(Date.now() / 1000);
+  const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const claims = b64url(JSON.stringify({
+    iss: sa.client_email,
+    sub: sender, // the Workspace mailbox the service account sends as
+    scope: 'https://www.googleapis.com/auth/gmail.send',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  }));
+  const signer = createSign('RSA-SHA256');
+  signer.update(`${header}.${claims}`);
+  const assertion = `${header}.${claims}.${signer.sign(sa.private_key.replace(/\\n/g, '\n')).toString('base64url')}`;
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const body = await res.json() as { access_token?: string; expires_in?: number; error?: string; error_description?: string };
+  if (!res.ok || !body.access_token) throw new Error(`Gmail auth failed: ${body.error ?? res.status} ${body.error_description ?? ''}`.trim());
+  cachedToken = { sender, token: body.access_token, expires: Date.now() + (body.expires_in ?? 3600) * 1000 };
+  return body.access_token;
+}
+
+async function sendViaGmailApi(sender: string, msg: Message) {
+  if (!sender) throw new Error('Set MAIL_SENDER to the Workspace mailbox that sends portal email');
+  const mime = await new MailComposer(msg).compile().build();
+  const token = await gmailAccessToken(sender);
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ raw: b64url(mime) }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new Error(`Gmail send failed: ${res.status} ${(await res.text()).slice(0, 300)}`);
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
