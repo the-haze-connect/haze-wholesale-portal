@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/session';
+import { AdminNav } from '../admin/nav';
 import { resendInvite } from './actions';
 import { InviteBuyerForm, InviteRepForm } from './forms';
 
@@ -26,6 +27,8 @@ export default async function InvitesPage() {
   const noLogin = accounts.filter(a => !withLogin.has(a.id)).length;
 
   return (
+    <>
+    {(isAdmin) && <AdminNav />}
     <main className="wrap">
       <div className="page-head">
         <div>
@@ -73,5 +76,6 @@ export default async function InvitesPage() {
         </aside>
       </div>
     </main>
+    </>
   );
 }

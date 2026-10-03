@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { STATUS_LABEL, fmtDate, orderScope } from '@/lib/order-access';
 import { ACH_SETTING, getSetting } from '@/lib/orders';
 import { requireUser } from '@/lib/session';
+import { AdminNav } from '../admin/nav';
 import { saveAchInstructions } from './actions';
 import { AchInstructionsForm } from './forms';
 
@@ -28,6 +29,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   ]);
 
   return (
+    <>
+    {(isAdmin) && <AdminNav />}
     <main className="wrap">
       <div className="page-head">
         <div>
@@ -82,5 +85,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         )}
       </div>
     </main>
+    </>
   );
 }

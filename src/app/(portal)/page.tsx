@@ -12,7 +12,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser();
-  const ctx = await shopContext(user, await searchParams);
+  const sp = await searchParams;
+  const ctx = await shopContext(user, sp);
+  const cat = typeof sp.cat === 'string' ? sp.cat : undefined;
   const [items, announcements] = await Promise.all([getCatalog(ctx.level), getAnnouncements()]);
   const pinned = announcements.find(a => a.pinned);
   const inStock = items.filter(i => i.stock !== 'out').length;
@@ -20,6 +22,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   return (
     <main className="wrap">
       {user.role === 'REP' && <RepAccountPicker accounts={ctx.repAccounts} selected={ctx.account?.id ?? null} />}
+      {user.role === 'ADMIN' && ctx.account && <RepAccountPicker accounts={[{ id: ctx.account.id, name: ctx.account.name }]} selected={ctx.account.id} admin />}
 
       {pinned && (
         <section className="hero" aria-label="Pinned announcement">
@@ -28,7 +31,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
             <h2 className="display">{pinned.title}</h2>
             <p>{pinned.body}</p>
           </div>
-          {pinned.ctaLabel ? <div style={{ position: 'relative', zIndex: 1 }}><a className="btn btn-gold" href="#shop">{pinned.ctaLabel}</a></div> : null}
+          {pinned.ctaLabel ? <div style={{ position: 'relative', zIndex: 1 }}><a className="btn btn-gold" href={pinned.ctaCategory ? `${ctx.carry ? `${ctx.carry}&` : '?'}cat=${encodeURIComponent(pinned.ctaCategory)}#shop` : '#shop'}>{pinned.ctaLabel}</a></div> : null}
         </section>
       )}
 
@@ -62,7 +65,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
             <p>Case and display quantities, live from our warehouse. Prices shown are {user.role === 'BUYER' ? 'your' : 'this account’s'} tier price.</p>
           </div>
         </div>
-        {items.length ? <CatalogGrid items={items} canOrder={ctx.canOrder} /> : <p className="empty">The catalog is empty. Run the Order Time sync to load products.</p>}
+        {items.length ? <CatalogGrid key={cat ?? 'All'} items={items} canOrder={ctx.canOrder} initialCategory={cat} /> : <p className="empty">The catalog is empty. Run the Order Time sync to load products.</p>}
       </section>
       <CartBar carry={ctx.carry} />
     </main>

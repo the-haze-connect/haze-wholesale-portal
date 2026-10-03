@@ -32,10 +32,18 @@ B2B ordering portal for The Haze Connect and Totally Baked wholesale accounts. O
 - **Emails**: buyer confirmation and a new-order alert to `ORDER_ALERT_EMAIL` (defaults to `MAIL_SENDER`).
 - Free shipping, no minimum, no sales tax (resale). Reps and admins pick the shop they're ordering for.
 
+## Admin console (phase 1, step 4)
+
+- **Admin** menu with tabs for Orders, Announcements, Accounts, Commissions and Invites, with counts of what needs attention.
+- **Announcements**: post deals, delays and news with a live preview; pin one as the home-page banner with a button that opens a product category; set an end date; hide, edit or delete; optionally email it to every buyer with a login.
+- **Accounts**: search and filter (no login yet, no price tier, missing or blocked state, on hold, closed, by rep); set ordering status (active, on hold, closed); manage each shop's logins; jump straight to ordering for a shop. Tier, rep and address stay in Order Time.
+- **Commissions**: totals by rep; record payouts (optionally through a date); reverse entries (unpaid ones are cancelled, paid ones are clawed back from the next payout); manual adjustments for partial returns or bonuses; payout history; CSV export.
+- **Reps** get a My commissions page with their earned, pending and paid totals, every entry and their payouts.
+
 ## Next steps
 
-1. Admin console: announcements, accounts, commission ledger and payouts.
-2. Rep commissions view.
+- Shipping and tracking updates from Order Time / ShipStation back to the order page.
+- Reorder from a past order.
 
 ## Run locally
 

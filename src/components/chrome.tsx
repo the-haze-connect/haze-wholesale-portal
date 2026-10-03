@@ -14,8 +14,8 @@ export interface Who {
 const NAV: Record<Who['role'], [string, string][]> = {
   BUYER: [['/', 'Home'], ['/quick-order', 'Quick order'], ['/orders', 'Orders'], ['/cart', 'Cart']],
   VIEW_ONLY: [['/', 'Home'], ['/quick-order', 'Inventory list'], ['/orders', 'Orders']],
-  REP: [['/', 'Shop'], ['/quick-order', 'Quick order'], ['/orders', 'Orders'], ['/invites', 'Invites'], ['/cart', 'Cart']],
-  ADMIN: [['/', 'Home'], ['/quick-order', 'Quick order'], ['/orders', 'Orders'], ['/invites', 'Invites'], ['/cart', 'Cart']],
+  REP: [['/', 'Shop'], ['/quick-order', 'Quick order'], ['/orders', 'Orders'], ['/commissions', 'Commissions'], ['/invites', 'Invites'], ['/cart', 'Cart']],
+  ADMIN: [['/', 'Home'], ['/quick-order', 'Quick order'], ['/orders', 'Orders'], ['/admin/announcements', 'Admin'], ['/cart', 'Cart']],
 };
 
 /** Keeps the admin's preview tier (?level=) when moving between pages. */
@@ -37,7 +37,7 @@ export function Header({ who }: { who: Who }) {
         <Link className="brand" href={`/${q}`}><b>The Haze Connect</b><span className="chip-w">{who.role === 'ADMIN' ? 'Admin' : who.role === 'REP' ? 'Rep' : 'Wholesale'}</span></Link>
         <nav className="nav" aria-label="Main">
           {NAV[who.role].map(([href, label]) => (
-            <Link key={href} href={`${href}${q}`} aria-current={path === href || (href !== '/' && path.startsWith(`${href}/`)) ? 'page' : undefined}>{label}</Link>
+            <Link key={href} href={`${href}${q}`} aria-current={path === href || (href !== '/' && path.startsWith(`${href}/`)) || (href === '/admin/announcements' && (path.startsWith('/admin') || path === '/invites')) ? 'page' : undefined}>{label}</Link>
           ))}
         </nav>
         <div className="tools">
