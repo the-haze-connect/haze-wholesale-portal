@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export function AdminTabs({ counts }: { counts: { waiting: number; earned: number } }) {
+export function AdminTabs({ counts }: { counts: { waiting: number; earned: number; requests: number } }) {
   const path = usePathname();
   const tabs: [string, string, number?][] = [
     ['/orders', 'Orders', counts.waiting],
+    ['/admin/requests', 'Requests', counts.requests],
     ['/admin/announcements', 'Announcements'],
     ['/admin/products', 'Products'],
     ['/admin/accounts', 'Accounts'],

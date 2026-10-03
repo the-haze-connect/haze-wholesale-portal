@@ -64,6 +64,12 @@ B2B ordering portal for The Haze Connect and Totally Baked wholesale accounts. O
 
 - **Admin → Data health** lists what to fix in Order Time, each with why it matters, how to fix it and a CSV: case items with a $0 price (hidden from the portal), missing Distro prices (charged base instead), accounts with no or unreadable ship-to state, accounts in blocked states, outdated or missing price levels, and accounts with no ship-to address record (their orders can't post to Order Time). Updates with every sync.
 
+## Wholesale requests
+
+- Public **/apply** page (linked from sign-in): business, contact, ship-to address, store type, license and resale numbers, optional license/resale document upload (PDF or photo, 5 MB, admin-only), rep, notes. Blocked states are refused; a license number, resale number or document is required; spam honeypot and per-email/per-IP limits.
+- Each request creates a **Lead in Order Time** (`POST /lead`) with addresses, rep and a note holding the details. The shop gets a confirmation email; the team (and the named rep, if they have a login) get an alert.
+- **Admin → Requests**: review, see possible duplicate accounts, then **Approve** as a new customer (converts the lead with `PUT /lead/ConvertToCustomer`, sets rep and price level on the customer, creates the portal account and buyer login, emails the invite) or as an existing account; or **Decline** with an optional email. Failed lead creation can be retried.
+
 ## Next steps
 
 

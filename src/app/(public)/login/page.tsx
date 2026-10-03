@@ -51,7 +51,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                   <button className="btn btn-dark" type="submit" style={{ minHeight: 48 }}>Email me a sign-in link</button>
                 </form>
                 <p style={{ margin: '8px 0 0', paddingTop: 16, borderTop: '1px solid var(--line)', color: 'var(--ink-2)' }}>
-                  New to Haze wholesale? Ask your rep for an invite.
+                  New to Haze wholesale? <a href="/apply">Request wholesale access</a> or ask your rep for an invite.
                 </p>
               </>
             )}

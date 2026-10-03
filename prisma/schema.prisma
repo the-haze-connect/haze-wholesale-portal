@@ -281,3 +281,56 @@ model ProductPhoto {
   createdBy String?
   createdAt DateTime @default(now())
 }
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+/**
+ * A shop asking for wholesale access from the public /apply page.
+ */
+model AccessRequest {
+  id            Int           @id @default(autoincrement())
+  status        RequestStatus @default(PENDING)
+  businessName  String
+  contactName   String
+  email         String
+  phone         String?
+  addr1         String
+  addr2         String?
+  city          String
+  state         String
+  zip           String
+  storeType     String?
+  licenseNumber String?
+  resaleNumber  String?
+  website       String?
+  repName       String?
+  notes         String?
+  documentId    Int?
+  leadId        Int? // Order Time lead created on submit
+  leadError     String? // why the lead couldn't be created (admins can retry)
+  customerId    Int? // Order Time customer after approval
+  accountId     Int?
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  declineReason String?
+  createdAt     DateTime      @default(now())
+
+  @@index([status, createdAt])
+  @@index([email])
+}
+
+/**
+ * Files buyers upload (license or resale certificate). Admin-only.
+ */
+model Document {
+  id        Int      @id @default(autoincrement())
+  name      String
+  mime      String
+  data      Bytes
+  bytes     Int
+  createdAt DateTime @default(now())
+}

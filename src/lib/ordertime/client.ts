@@ -62,7 +62,7 @@ export class OrderTime {
     this.base = cfg.baseUrl ?? 'https://services.ordertime.com/api';
   }
 
-  private async request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+  private async request<T>(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown): Promise<T> {
     const res = await fetch(`${this.base}/${path}`, {
       method,
       headers: {
@@ -76,7 +76,7 @@ export class OrderTime {
     });
     const text = await res.text();
     if (!res.ok) throw new OrderTimeError(res.status, text, path);
-    return JSON.parse(text) as T;
+    return (text ? JSON.parse(text) : {}) as T;
   }
 
   /** One page of a list query. Read-only, even though it is a POST. */
@@ -98,6 +98,25 @@ export class OrderTime {
   /** Create a sales order. Docs: https://help.ordertime.com/help/sales-order */
   createSalesOrder(order: OtSalesOrderInput): Promise<{ DocNo: number; Id?: number }> {
     return this.request('POST', 'salesorder', order);
+  }
+
+  /** Create a lead. Docs: https://help.ordertime.com/help/lead */
+  createLead(l: OtLeadInput): Promise<{ Id: number; Name: string }> {
+    return this.request('POST', 'lead', l);
+  }
+
+  /** Convert a lead to a customer; returns the new customer record. */
+  convertLeadToCustomer(leadId: number): Promise<{ Id: number; Name: string } & Record<string, unknown>> {
+    return this.request('PUT', `lead/ConvertToCustomer?id=${leadId}`);
+  }
+
+  getCustomer(id: number): Promise<{ Id: number; Name: string } & Record<string, unknown>> {
+    return this.request('GET', `customer?id=${id}`);
+  }
+
+  /** Order Time updates take the whole record: read it, change fields, send it back. */
+  updateCustomer(c: Record<string, unknown>): Promise<{ Id: number }> {
+    return this.request('PUT', 'customer', c);
   }
 
   /**
@@ -142,4 +161,24 @@ export interface OtSalesOrderInput {
     UomRef?: { Name: string };
     Description?: string;
   }>;
+}
+
+export interface OtAddressInput {
+  Name?: string;
+  Addr1: string;
+  Addr2?: string;
+  City: string;
+  State: string;
+  Zip: string;
+  Email?: string;
+  Phone?: string;
+}
+
+export interface OtLeadInput {
+  Name: string;          // 50 characters max
+  CompanyName?: string;
+  BillAddress?: OtAddressInput;
+  PrimaryShipAddress?: OtAddressInput;
+  SalesRepRef?: { Id: number } | null;
+  Note?: string;
 }
