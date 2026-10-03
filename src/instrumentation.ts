@@ -17,7 +17,7 @@ export async function register() {
     const started = Date.now();
     try {
       const r = await runSync();
-      console.log(`[sync] ${r.products} products (${r.inStock} in stock), ${r.accounts} accounts in ${Math.round((Date.now() - started) / 1000)}s`);
+      console.log(`[sync] ${r.products} products (${r.inStock} in stock), ${r.accounts} accounts${r.photos ? `, ${r.photos.matched}/${r.photos.total} with store photos` : ''} in ${Math.round((Date.now() - started) / 1000)}s`);
     } catch (err) {
       console.error('[sync] failed:', err instanceof Error ? err.message : err);
     } finally {

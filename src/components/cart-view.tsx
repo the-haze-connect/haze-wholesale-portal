@@ -7,6 +7,7 @@ import { submitOrder } from '@/app/(portal)/cart/actions';
 import type { CatalogItem } from '@/lib/catalog';
 import { orderTotals } from '@/lib/pricing';
 import { useCart } from './cart';
+import { Thumb } from './thumb';
 import { money } from './format';
 
 export interface CardConfig { apiLoginId: string; clientKey: string; acceptJsUrl: string }
@@ -127,7 +128,7 @@ export function CartView({ items, feePercent, card, forAccountId, canSubmit, blo
             <tbody>
               {lines.map(l => (
                 <tr key={`${l.productId}-${l.uom}`}>
-                  <td><b>{l.item.name}</b><span className="sub">{l.item.isBulk ? l.opt.label : 'Case'} · {l.item.code}</span></td>
+                  <td><div className="with-thumb"><Thumb src={l.item.photo} category={l.item.category} /><div><b>{l.item.name}</b><span className="sub">{l.item.isBulk ? l.opt.label : 'Case'} · {l.item.code}</span></div></div></td>
                   <td className="num">{money(l.opt.price)}</td>
                   <td className="num">
                     <div className="step" style={{ display: 'inline-flex' }}>

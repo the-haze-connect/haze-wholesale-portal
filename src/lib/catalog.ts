@@ -26,8 +26,13 @@ export interface CatalogItem {
   stock: StockState;
   available: number;
   priceSource: string;
+  photo: string | null;
   options: CatalogOption[];
 }
+
+/** The photo buyers see: an admin's photo wins over the automatic store match; "none" hides it. */
+export const effectivePhoto = (override: string | null | undefined, auto: string | null | undefined) =>
+  override === 'none' ? null : override || auto || null;
 
 interface ProductRecord {
   otItemId: number;
@@ -42,6 +47,7 @@ interface ProductRecord {
   available: number;
   reorderPoint: number | null;
   levelPrices: Record<string, number>;
+  photo?: string | null;
 }
 
 function stockState(p: ProductRecord): StockState {
@@ -61,7 +67,7 @@ export function toCatalogItem(p: ProductRecord, levelName: string | null): Catal
     : [{ uom: 'EA', label: 'each', quantityPerUnit: 1, price, maxQty: Math.floor(p.available) }];
   return {
     id: p.otItemId, code: p.code, sku: p.sku, name: p.name, category: p.category, brand: p.brand, isBulk: p.isBulk,
-    msrp: p.msrp, stock: stockState(p), available: p.available, priceSource: source, options,
+    msrp: p.msrp, stock: stockState(p), available: p.available, priceSource: source, photo: p.photo ?? null, options,
   };
 }
 
@@ -75,6 +81,7 @@ async function loadProducts(): Promise<ProductRecord[]> {
       otItemId: r.otItemId, code: r.code, sku: r.sku, name: r.name, category: r.category, brand: r.brand, isBulk: r.isBulk,
       basePrice: Number(r.basePrice), msrp: r.msrp === null ? null : Number(r.msrp), available: Number(r.available),
       reorderPoint: r.reorderPoint === null ? null : Number(r.reorderPoint),
+      photo: effectivePhoto(r.photoOverride, r.photoUrl),
       levelPrices: Object.fromEntries(r.prices.map(p => [p.priceLevel.name, Number(p.price)])),
     }));
   }

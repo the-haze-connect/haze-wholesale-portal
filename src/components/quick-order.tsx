@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { CatalogItem } from '@/lib/catalog';
 import { useCart } from './cart';
+import { Thumb } from './thumb';
 import { STOCK_LABEL, money } from './format';
 
 export function QuickOrder({ items, canOrder }: { items: CatalogItem[]; canOrder: boolean }) {
@@ -30,7 +31,7 @@ export function QuickOrder({ items, canOrder }: { items: CatalogItem[]; canOrder
               const id = `qo-${i.id}-${o.uom}`;
               return (
                 <tr key={id}>
-                  <td><b>{i.name}</b><span className="sub">{i.sku ? `SKU ${i.sku} · ` : ''}{i.code}</span></td>
+                  <td><div className="with-thumb"><Thumb src={i.photo} category={i.category} /><div><b>{i.name}</b><span className="sub">{i.sku ? `SKU ${i.sku} · ` : ''}{i.code}</span></div></div></td>
                   <td>{i.brand === 'TOTALLY_BAKED' ? 'TB · ' : ''}{i.category}</td>
                   <td><span className={`pill pill-${i.stock}`}>{STOCK_LABEL[i.stock]}</span></td>
                   <td className="num">{money(o.price)}<span className="sub">per {i.isBulk ? o.label : 'case'}</span></td>

@@ -66,9 +66,10 @@ function ProductCard({ item, canOrder }: { item: CatalogItem; canOrder: boolean 
 
   return (
     <article className="prod">
-      <div className="tile" style={{ background: TILE[item.category] ?? '#204B57' }}>
+      <div className={`tile${item.photo ? ' has-photo' : ''}`} style={{ background: item.photo ? '#fff' : TILE[item.category] ?? '#204B57' }}>
+        {item.photo && <img src={item.photo} alt="" loading="lazy" decoding="async" />}
         <span className={`stock stock-${item.stock}`}>{STOCK_LABEL[item.stock]}</span>
-        <span className="tile-word" aria-hidden="true">{item.brand === 'TOTALLY_BAKED' ? 'Totally Baked' : item.category}</span>
+        {!item.photo && <span className="tile-word" aria-hidden="true">{item.brand === 'TOTALLY_BAKED' ? 'Totally Baked' : item.category}</span>}
       </div>
       <div className="prod-body">
         <div style={{ flex: 1 }}>

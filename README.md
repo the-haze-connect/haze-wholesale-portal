@@ -40,6 +40,11 @@ B2B ordering portal for The Haze Connect and Totally Baked wholesale accounts. O
 - **Commissions**: totals by rep; record payouts (optionally through a date); reverse entries (unpaid ones are cancelled, paid ones are clawed back from the next payout); manual adjustments for partial returns or bonuses; payout history; CSV export.
 - **Reps** get a My commissions page with their earned, pending and paid totals, every entry and their payouts.
 
+## Product photos
+
+- Each sync matches products to photos on the brand storefronts (public `products.json`, cached for an hour): The Haze Connect by SKU family and strain (case SKUs match the single-unit store SKUs; bulk flower uses the flower strain photo), Totally Baked by product line. Set `PHOTO_STORE_HAZE` / `PHOTO_STORE_TB` to change the stores, or `DISABLE_PHOTO_MATCH=1` to turn it off.
+- **Admin → Products**: see which in-stock items still need a photo, upload one (JPG/PNG/WebP/GIF up to 4 MB, stored in the database and served from `/photos/<id>`) or paste an image link, hide a wrong automatic photo, or hide a product from the portal.
+
 ## Next steps
 
 - Shipping and tracking updates from Order Time / ShipStation back to the order page.

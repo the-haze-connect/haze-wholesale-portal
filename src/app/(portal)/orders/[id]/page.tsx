@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { money } from '@/components/format';
+import { Thumb } from '@/components/thumb';
+import { effectivePhoto } from '@/lib/catalog';
 import { db } from '@/lib/db';
 import { STATUS_LABEL, fmtDate, orderScope } from '@/lib/order-access';
 import { ACH_SETTING, getSetting } from '@/lib/orders';
@@ -56,7 +58,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
               <tbody>
                 {order.lines.map(l => (
                   <tr key={l.id}>
-                    <td><b>{l.product.name}</b><span className="sub">{UOM_LABEL[l.uom] ?? l.uom} · {l.product.code}</span></td>
+                    <td><div className="with-thumb"><Thumb src={effectivePhoto(l.product.photoOverride, l.product.photoUrl)} category={l.product.category} /><div><b>{l.product.name}</b><span className="sub">{UOM_LABEL[l.uom] ?? l.uom} · {l.product.code}</span></div></div></td>
                     <td className="num">{money(Number(l.unitPrice))}</td>
                     <td className="num">{Number(l.quantity)}</td>
                     <td className="num"><b>{money(Number(l.lineTotal))}</b></td>

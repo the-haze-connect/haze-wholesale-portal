@@ -8,6 +8,7 @@ export function AdminTabs({ counts }: { counts: { waiting: number; earned: numbe
   const tabs: [string, string, number?][] = [
     ['/orders', 'Orders', counts.waiting],
     ['/admin/announcements', 'Announcements'],
+    ['/admin/products', 'Products'],
     ['/admin/accounts', 'Accounts'],
     ['/admin/commissions', 'Commissions', counts.earned],
     ['/invites', 'Invites'],

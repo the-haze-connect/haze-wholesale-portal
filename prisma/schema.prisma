@@ -125,6 +125,11 @@ model Product {
   available     Decimal      @default(0) @db.Decimal(12, 3) // HQ available, base unit
   reorderPoint  Decimal?     @db.Decimal(12, 3)
   stockSyncedAt DateTime?
+  // Photos: photoUrl is matched automatically from the brand Shopify stores each hour;
+  // photoOverride is set by an admin (an image URL or /photos/<id> for an upload) and wins.
+  photoUrl      String?
+  photoSource   String? // sku | strain | line
+  photoOverride String? // "none" hides the automatic photo
   prices        LevelPrice[]
   orderLines    OrderLine[]
   updatedAt     DateTime     @updatedAt
@@ -255,4 +260,16 @@ model Setting {
   value     String
   updatedBy String?
   updatedAt DateTime @updatedAt
+}
+
+/**
+ * Product photos uploaded by admins, served from /photos/<id>.
+ */
+model ProductPhoto {
+  id        Int      @id @default(autoincrement())
+  mime      String
+  data      Bytes
+  bytes     Int
+  createdBy String?
+  createdAt DateTime @default(now())
 }
