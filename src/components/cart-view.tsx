@@ -146,7 +146,7 @@ export function CartView({ items, feePercent, card, forAccountId, canSubmit, blo
         <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginTop: 20 }}>
           <div className="field">
             <label htmlFor="po">PO number <span style={{ fontWeight: 400 }}>(optional)</span></label>
-            <input id="po" value={po} onChange={e => setPo(e.target.value)} maxLength={40} />
+            <input id="po" value={po} onChange={e => setPo(e.target.value)} maxLength={25} />
           </div>
           <div className="field span">
             <label htmlFor="notes">Notes for our team <span style={{ fontWeight: 400 }}>(optional)</span></label>

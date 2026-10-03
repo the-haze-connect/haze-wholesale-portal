@@ -71,7 +71,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     const o = await tx.order.create({
       data: {
         accountId: account.id, placedByUserId: input.user.id, repId: account.repId, paymentMethod: input.payment,
-        customerPO: input.customerPO?.trim().slice(0, 40) || null, notes: input.notes?.trim().slice(0, 1000) || null,
+        customerPO: input.customerPO?.trim().slice(0, 25) || null, notes: input.notes?.trim().slice(0, 1000) || null,
         subtotal: totals.subtotal, cardFee: totals.cardFee, total: totals.total,
         lines: { create: lines.map(l => ({ productId: l.productDbId, quantity: l.quantity, uom: l.uom, pounds: l.pounds, unitPrice: l.unitPrice, lineTotal: l.lineTotal })) },
       },
@@ -170,7 +170,9 @@ export async function postOrderToOrderTime(orderId: number) {
     ? `Paid by card via Authorize.net (transaction ${order.paymentRef}${order.cardLast4 ? `, card ending ${order.cardLast4}` : ''}). Total charged $${Number(order.total).toFixed(2)} incl. ${CARD_FEE_PERCENT}% card fee $${Number(order.cardFee).toFixed(2)}.`
     : `Paid by ACH/wire, confirmed by ${order.approvedBy ?? 'admin'}.`;
 
+  const LINE = 'AOLib7.SalesOrderLineItem, AOLib7' as const;
   const lineItems: OtSalesOrderInput['LineItems'] = order.lines.map(l => ({
+    $type: LINE,
     ItemRef: { Id: l.product.otItemId },
     Quantity: Number(l.quantity),
     Price: Number(l.unitPrice),
@@ -178,19 +180,25 @@ export async function postOrderToOrderTime(orderId: number) {
   }));
   const feeItemId = Number(process.env.ORDERTIME_CARD_FEE_ITEM_ID);
   if (Number(order.cardFee) > 0 && feeItemId) {
-    lineItems.push({ ItemRef: { Id: feeItemId }, Quantity: 1, Price: Number(order.cardFee), Description: `Card processing fee (${CARD_FEE_PERCENT}%)` });
+    lineItems.push({ $type: LINE, ItemRef: { Id: feeItemId }, Quantity: 1, Price: Number(order.cardFee), Description: `Card processing fee (${CARD_FEE_PERCENT}%)` });
   }
 
-  const so: OtSalesOrderInput = {
-    CustomerRef: { Id: order.account.otCustomerId },
-    ...(order.rep ? { SalesRepRef: { Id: order.rep.otId } } : {}),
-    ...(order.customerPO ? { CustomerPO: order.customerPO } : {}),
-    Memo: `Wholesale portal order #${order.id}. ${paidNote}${order.notes ? ` Buyer note: ${order.notes}` : ''}`.slice(0, 1000),
-    LineItems: lineItems,
-  };
-
   try {
-    const created = await new OrderTime(configFromEnv()).createSalesOrder(so);
+    const ot = new OrderTime(configFromEnv());
+    const shipTo = await ot.customerShipTo(order.account.otCustomerId);
+    if (!shipTo) throw new Error(`Customer ${order.account.otCustomerId} has no active ship-to address in Order Time. Add one, then retry.`);
+    const today = `${new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' })}T00:00:00`;
+    const so: OtSalesOrderInput = {
+      CustomerRef: { Id: order.account.otCustomerId },
+      ShipToRef: shipTo,
+      Date: today,
+      PromiseDate: today,
+      ...(order.rep ? { SalesRepRef: { Id: order.rep.otId } } : {}),
+      ...(order.customerPO ? { CustomerPO: order.customerPO.slice(0, 25) } : {}),
+      Memo: `Wholesale portal order #${order.id}. ${paidNote}${order.notes ? ` Buyer note: ${order.notes}` : ''}`.slice(0, 4000),
+      LineItems: lineItems,
+    };
+    const created = await ot.createSalesOrder(so);
     await db.order.update({ where: { id: orderId }, data: { otSalesOrderNo: created.DocNo ?? null, otPostedAt: new Date(), otError: null } });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
