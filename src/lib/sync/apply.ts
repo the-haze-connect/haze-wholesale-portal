@@ -38,7 +38,7 @@ export async function applySnapshot(db: PrismaClient, snap: Snapshot) {
     const data = {
       code: p.code, sku: p.sku, name: p.name, category: p.category, brand: p.brand, isBulk: p.isBulk,
       basePrice: p.basePrice, msrp: p.msrp, available: p.available, reorderPoint: p.reorderPoint,
-      active: true, stockSyncedAt: syncedAt,
+      active: true, wholesale: p.wholesale !== false, stockSyncedAt: syncedAt,
     };
     const row = await db.product.upsert({ where: { otItemId: p.otItemId }, create: { otItemId: p.otItemId, ...data }, update: data });
     seen.push(p.otItemId);

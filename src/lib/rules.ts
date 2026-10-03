@@ -62,6 +62,11 @@ export const ITEM_GROUPS: Record<string, { category: string; brand: 'HAZE' | 'TO
  * Order Time item codes carry the pack count, e.g. V-1-10 = 1g vape 10ct, PR-M-5 = mini 5-pack,
  * G-20-50 = 50ct gummy display. Single units (count 1) are DTC-only.
  */
+/** Order Time sample SKUs. Never sold as wholesale items; admins can offer them as free samples. */
+export function isSampleItem(code: string, description: string): boolean {
+  return /^(S-|TB-S-|TB-P-S-|TB-CBD-S-)/i.test(code.trim()) || /SAMPLE/i.test(description);
+}
+
 export function isWholesaleItem(code: string, description: string, category: string, brand: 'HAZE' | 'TOTALLY_BAKED'): boolean {
   if (/\*\*\*/.test(code) || /^(S-|TB-S-|TB-P-S-|TB-CBD-S-)/.test(code) || /SAMPLE/i.test(description)) return false;
   if (brand === 'HAZE') {

@@ -4,13 +4,14 @@ import { money } from '@/components/format';
 import { Thumb } from '@/components/thumb';
 import { effectivePhoto } from '@/lib/catalog';
 import { db } from '@/lib/db';
-import { resetProductPhoto, toggleProductVisible } from './actions';
-import { PhotoForm } from './photo-form';
+import { sampleLimit } from '@/lib/orders';
+import { resetProductPhoto, toggleProductVisible, toggleSample } from './actions';
+import { PhotoForm, SampleLimitForm } from './photo-form';
 
 export const dynamic = 'force-dynamic';
 
-const SHOW = [['instock', 'In stock'], ['nophoto', 'In stock, no photo'], ['all', 'All'], ['hidden', 'Hidden from portal']] as const;
-const CATEGORIES = ['Flower', 'Pre-Rolls', 'Vapes', 'Concentrates', 'Edibles', 'Bulk Flower'];
+const SHOW = [['instock', 'In stock'], ['nophoto', 'In stock, no photo'], ['samples', 'Free samples'], ['singles', 'Singles & sample SKUs'], ['all', 'All cases'], ['hidden', 'Hidden from portal']] as const;
+const CATEGORIES = ['Flower', 'Pre-Rolls', 'Vapes', 'Concentrates', 'Edibles', 'Bulk Flower', 'Samples'];
 const SOURCE = { sku: 'Store match', strain: 'Store match (same strain)', line: 'Store match (product line)' } as const;
 
 export default async function ProductsAdmin({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
@@ -24,16 +25,19 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
     active: true,
     ...(q ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { code: { contains: q, mode: 'insensitive' } }] } : {}),
     ...(cat ? { category: cat } : {}),
-    ...(show === 'instock' ? { visible: true, available: { gt: 0 } } :
-      show === 'nophoto' ? { visible: true, available: { gt: 0 }, AND: [noPhoto] } :
-      show === 'hidden' ? { visible: false } : {}),
+    ...(show === 'instock' ? { wholesale: true, visible: true, available: { gt: 0 } } :
+      show === 'nophoto' ? { wholesale: true, visible: true, available: { gt: 0 }, AND: [noPhoto] } :
+      show === 'samples' ? { sampleOffered: true } :
+      show === 'singles' ? { wholesale: false } :
+      show === 'hidden' ? { wholesale: true, visible: false } : { wholesale: true }),
   };
 
   const [products, inStock, inStockNoPhoto] = await Promise.all([
     db.product.findMany({ where, orderBy: [{ category: 'asc' }, { name: 'asc' }], take: 300 }),
-    db.product.count({ where: { active: true, visible: true, available: { gt: 0 } } }),
-    db.product.count({ where: { active: true, visible: true, available: { gt: 0 }, AND: [noPhoto] } }),
+    db.product.count({ where: { active: true, wholesale: true, visible: true, available: { gt: 0 } } }),
+    db.product.count({ where: { active: true, wholesale: true, visible: true, available: { gt: 0 }, AND: [noPhoto] } }),
   ]);
+  const [samplesOffered, limit] = await Promise.all([db.product.count({ where: { active: true, sampleOffered: true, available: { gte: 1 } } }), sampleLimit()]);
   const qs = (over: Record<string, string | null>) => {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries({ q, show, cat, ...over })) if (v) p.set(k, v);
@@ -53,7 +57,16 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
         <div className="kpi"><small>In stock on the portal</small><strong>{inStock}</strong></div>
         <div className="kpi"><small>With a photo</small><strong>{inStock - inStockNoPhoto}</strong></div>
         <div className="kpi"><small>Still need a photo</small><strong>{inStockNoPhoto}</strong></div>
+        <div className="kpi"><small>Free samples offered (in stock)</small><strong>{samplesOffered}</strong></div>
       </div>
+
+      <section className="panel" style={{ display: 'flex', gap: 24, alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div style={{ maxWidth: '62ch' }}>
+          <p className="label">Free samples</p>
+          <p style={{ margin: '6px 0 0', color: 'var(--ink-2)' }}>Buyers see a Free samples section on the home page and can add samples to a case order at no charge. To offer an item, open <Link href="/admin/products?show=singles">Singles &amp; sample SKUs</Link> (or any case) and click <b>Offer as sample</b>.</p>
+        </div>
+        <SampleLimitForm initial={limit} />
+      </section>
 
       <section className="panel">
         <form className="filters" action="/admin/products" method="get" style={{ marginBottom: 12 }}>
@@ -90,11 +103,11 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                       <td>
                         <div className="with-thumb">
                           {photo ? <a href={photo} target="_blank" rel="noreferrer"><img src={photo} alt="" className="thumb" style={{ width: 64, height: 64 }} loading="lazy" /></a> : <Thumb src={null} category={p.category} />}
-                          <div><b>{p.name}</b><span className="sub">{p.code} · {p.category}{!p.visible ? ' · hidden' : ''}</span></div>
+                          <div><b>{p.name}</b><span className="sub">{p.code} · {p.category}{!p.wholesale ? ' · single / sample' : ''}{!p.visible ? ' · hidden' : ''}</span>{p.sampleOffered && <span className="pill pill-in" style={{ marginTop: 4, display: 'inline-block' }}>Free sample</span>}</div>
                         </div>
                       </td>
                       <td><span className={`pill ${photo ? 'pill-in' : 'pill-low'}`}>{label}</span></td>
-                      <td className="num">{money(Number(p.basePrice))}{p.isBulk ? '/lb' : ''}</td>
+                      <td className="num">{p.wholesale ? <>{money(Number(p.basePrice))}{p.isBulk ? '/lb' : ''}</> : <span className="muted">{money(Number(p.basePrice))}</span>}</td>
                       <td className="num">{p.isBulk ? `${Number(p.available)} lb` : Number(p.available)}</td>
                       <td>
                         <div className="row-actions" style={{ alignItems: 'flex-start' }}>
@@ -108,7 +121,8 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                           {p.photoOverride === 'none' && (
                             <form action={resetProductPhoto}><input type="hidden" name="productId" value={p.id} /><button className="btn btn-ghost btn-sm" type="submit">Restore</button></form>
                           )}
-                          <form action={toggleProductVisible}><input type="hidden" name="productId" value={p.id} /><button className="btn btn-ghost btn-sm" type="submit">{p.visible ? 'Hide' : 'Show'}</button></form>
+                          <form action={toggleSample}><input type="hidden" name="productId" value={p.id} /><button className="btn btn-ghost btn-sm" type="submit">{p.sampleOffered ? 'Stop sample' : 'Offer as sample'}</button></form>
+                          {p.wholesale && <form action={toggleProductVisible}><input type="hidden" name="productId" value={p.id} /><button className="btn btn-ghost btn-sm" type="submit">{p.visible ? 'Hide' : 'Show'}</button></form>}
                         </div>
                       </td>
                     </tr>

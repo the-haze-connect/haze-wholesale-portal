@@ -1,5 +1,5 @@
 import type { OtCustomer, OtInventoryByLocation, OtItem, OtLevelItemPrice, OtPriceLevel, OtSalesRep } from '../ordertime/types';
-import { COMMISSIONED_REPS, ITEM_GROUPS, PRICE_LEVELS, isWholesaleItem, normalizeState } from '../rules';
+import { COMMISSIONED_REPS, ITEM_GROUPS, PRICE_LEVELS, isSampleItem, isWholesaleItem, normalizeState } from '../rules';
 
 export interface RawOrderTime {
   assemblies: OtItem[];
@@ -24,6 +24,8 @@ export interface SnapshotProduct {
   available: number;
   reorderPoint: number | null;
   levelPrices: Record<string, number>;
+  /** false for single units and sample SKUs: kept only so admins can offer them as free samples. */
+  wholesale: boolean;
 }
 
 export interface SnapshotAccount {
@@ -90,18 +92,24 @@ export function buildSnapshot(raw: RawOrderTime, stockLocation = 'HQ', blockedSt
   for (const item of [...raw.assemblies, ...raw.parts]) {
     const group = item.ItemGroupRef?.Name;
     const map = group ? ITEM_GROUPS[group] : undefined;
-    if (!item.IsActive || !map) continue;
-    if (!map.bulk && !isWholesaleItem(item.Name, item.Description ?? '', map.category, map.brand)) continue;
-    if (!(item.Price > 0.01)) { productsWithoutPrice.push(item.Name); continue; }
+    if (!item.IsActive || /\*\*\*/.test(item.Name)) continue;
+    const sample = isSampleItem(item.Name, item.Description ?? '');
+    if (!map && !sample) continue;
+    const category = map?.category ?? 'Samples';
+    const brand = map?.brand ?? (/^TB-/i.test(item.Name.trim()) ? 'TOTALLY_BAKED' : 'HAZE');
+    const caseItem = !!map && !sample && (!!map.bulk || isWholesaleItem(item.Name, item.Description ?? '', category, brand));
+    if (caseItem && !(item.Price > 0.01)) productsWithoutPrice.push(item.Name);
+    const wholesale = caseItem && item.Price > 0.01;
     const inv = stock.get(item.Id);
     products.push({
+      wholesale,
       otItemId: item.Id,
       code: item.Name,
       sku: field(item.CustomFields, 'SKU'),
       name: (item.Description || '').trim() || item.Name,
-      category: map.category,
-      brand: map.brand,
-      isBulk: !!map.bulk,
+      category,
+      brand,
+      isBulk: !!map?.bulk,
       basePrice: item.Price,
       msrp: num(field(item.CustomFields, 'MSRP')),
       available: Math.max(0, inv?.Available ?? 0),
@@ -113,7 +121,7 @@ export function buildSnapshot(raw: RawOrderTime, stockLocation = 'HQ', blockedSt
   const distroPricesMissing: Record<string, number> = {};
   for (const [level, rule] of Object.entries(PRICE_LEVELS)) {
     if (rule.kind !== 'ITEM_PRICE') continue;
-    const relevant = products.filter(p => (level === 'Master Distro TB') === (p.brand === 'TOTALLY_BAKED'));
+    const relevant = products.filter(p => p.wholesale && (level === 'Master Distro TB') === (p.brand === 'TOTALLY_BAKED'));
     distroPricesMissing[level] = relevant.filter(p => !(level in p.levelPrices)).length;
   }
 

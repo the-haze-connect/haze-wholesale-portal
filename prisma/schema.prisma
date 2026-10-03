@@ -127,6 +127,8 @@ model Product {
   stockSyncedAt DateTime?
   // Photos: photoUrl is matched automatically from the brand Shopify stores each hour;
   // photoOverride is set by an admin (an image URL or /photos/<id> for an upload) and wins.
+  wholesale     Boolean      @default(true) // false: single unit or sample SKU, only sold as a free sample
+  sampleOffered Boolean      @default(false) // admin: show in the Samples section
   photoUrl      String?
   photoSource   String? // sku | strain | line
   photoOverride String? // "none" hides the automatic photo

@@ -17,7 +17,11 @@ export interface ProductForPricing {
   basePrice: number;
   available: number; // HQ, base unit (lbs for bulk)
   levelPrices: Record<string, number>;
+  wholesale?: boolean;
+  sampleOffered?: boolean;
 }
+
+export const SAMPLE_UOM = 'SAMPLE';
 
 export interface PricedLine {
   productDbId: number;
@@ -43,7 +47,7 @@ const MAX_QTY = 9999;
  * Re-prices a cart on the server from current catalog data. Browser prices are never trusted.
  * Returns the priced lines plus any problems (unavailable items, not enough stock).
  */
-export function priceCart(requested: RequestedLine[], products: Map<number, ProductForPricing>, levelName: string | null): PricedCart {
+export function priceCart(requested: RequestedLine[], products: Map<number, ProductForPricing>, levelName: string | null, sampleLimit = 5): PricedCart {
   const problems: string[] = [];
 
   // Merge duplicate lines
@@ -61,6 +65,15 @@ export function priceCart(requested: RequestedLine[], products: Map<number, Prod
   for (const r of merged.values()) {
     const p = products.get(r.productId);
     if (!p) { problems.push('An item in your cart is no longer available. Remove it and try again.'); continue; }
+
+    // Free samples: only items an admin offers, priced at $0
+    if (r.uom === SAMPLE_UOM) {
+      if (!p.sampleOffered) { problems.push(`${p.name} is no longer offered as a sample. Remove it and try again.`); continue; }
+      usedByProduct.set(p.otItemId, (usedByProduct.get(p.otItemId) ?? 0) + r.quantity);
+      lines.push({ productDbId: p.dbId, otItemId: p.otItemId, code: p.code, name: p.name, isBulk: false, uom: SAMPLE_UOM, quantity: r.quantity, unitPrice: 0, lineTotal: 0, pounds: null });
+      continue;
+    }
+    if (p.wholesale === false) { problems.push(`${p.name} isn’t sold by the case. Remove it and try again.`); continue; }
     const { price } = unitPrice({ basePrice: p.basePrice, levelPrices: p.levelPrices }, levelName);
     if (!(price > 0)) { problems.push(`${p.name} has no price set yet. Remove it or contact your rep.`); continue; }
 
@@ -92,6 +105,10 @@ export function priceCart(requested: RequestedLine[], products: Map<number, Prod
         : `Only ${have} of ${p.name} available. Lower the quantity and try again.`);
     }
   }
+
+  const sampleUnits = lines.filter(l => l.uom === SAMPLE_UOM).reduce((n, l) => n + l.quantity, 0);
+  if (sampleUnits > sampleLimit) problems.push(`Samples are limited to ${sampleLimit} per order. Remove ${sampleUnits - sampleLimit}.`);
+  if (sampleUnits && !lines.some(l => l.uom !== SAMPLE_UOM)) problems.push('Samples ship with a case order. Add at least one case to your cart.');
 
   if (!lines.length && !problems.length) problems.push('Your cart is empty.');
   return { lines, problems };

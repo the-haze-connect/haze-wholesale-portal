@@ -3,7 +3,10 @@ import { AnnouncementFeed } from '@/components/announcements';
 import { CartBar } from '@/components/cart-bar';
 import { CatalogGrid } from '@/components/catalog-grid';
 import { RepAccountPicker } from '@/components/rep-picker';
+import { SamplesSection } from '@/components/samples';
 import { getAnnouncements } from '@/lib/announcements';
+import { sampleLimit } from '@/lib/orders';
+import { getSamples } from '@/lib/samples';
 import { getCatalog } from '@/lib/catalog';
 import { shopContext } from '@/lib/context';
 import { requireUser } from '@/lib/session';
@@ -15,7 +18,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const sp = await searchParams;
   const ctx = await shopContext(user, sp);
   const cat = typeof sp.cat === 'string' ? sp.cat : undefined;
-  const [items, announcements] = await Promise.all([getCatalog(ctx.level), getAnnouncements()]);
+  const [items, announcements, samples, limit] = await Promise.all([getCatalog(ctx.level), getAnnouncements(), getSamples(), sampleLimit()]);
   const pinned = announcements.find(a => a.pinned);
   const inStock = items.filter(i => i.stock !== 'out').length;
 
@@ -67,6 +70,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
         </div>
         {items.length ? <CatalogGrid key={cat ?? 'All'} items={items} canOrder={ctx.canOrder} initialCategory={cat} /> : <p className="empty">The catalog is empty. Run the Order Time sync to load products.</p>}
       </section>
+      <SamplesSection samples={samples} limit={limit} canOrder={ctx.canOrder} />
       <CartBar carry={ctx.carry} />
     </main>
   );

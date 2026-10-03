@@ -10,6 +10,14 @@ import { BLOCKED_STATES, CARD_FEE_PERCENT } from './rules';
 import { appUrl, type SessionUser } from './session';
 
 export const ACH_SETTING = 'ach_instructions';
+export const SAMPLE_LIMIT_SETTING = 'sample_limit';
+
+/** Most free sample units one order can include (admin setting, default 5). */
+export async function sampleLimit() {
+  const raw = await getSetting(SAMPLE_LIMIT_SETTING);
+  const v = raw === null || raw.trim() === '' ? NaN : Number(raw);
+  return Number.isInteger(v) && v >= 0 ? v : 5;
+}
 
 export interface PlaceOrderInput {
   user: SessionUser;
@@ -26,12 +34,12 @@ export type PlaceOrderResult = { ok: true; orderId: number } | { ok: false; mess
 
 async function loadProducts(otItemIds: number[]) {
   const rows = await db.product.findMany({
-    where: { otItemId: { in: otItemIds }, active: true, visible: true },
+    where: { otItemId: { in: otItemIds }, active: true, OR: [{ visible: true, wholesale: true }, { sampleOffered: true }] },
     include: { prices: { include: { priceLevel: true } } },
   });
   return new Map(rows.map(r => [r.otItemId, {
     dbId: r.id, otItemId: r.otItemId, code: r.code, name: r.name, isBulk: r.isBulk,
-    basePrice: Number(r.basePrice), available: Number(r.available),
+    basePrice: Number(r.basePrice), available: Number(r.available), wholesale: r.wholesale, sampleOffered: r.sampleOffered,
     levelPrices: Object.fromEntries(r.prices.map(p => [p.priceLevel.name, Number(p.price)])),
   }]));
 }
@@ -41,7 +49,7 @@ export async function quoteCart(accountId: number, requested: RequestedLine[]) {
   const account = await db.account.findUnique({ where: { id: accountId }, include: { priceLevel: true, rep: true } });
   if (!account) return null;
   const products = await loadProducts(requested.map(l => Number(l.productId)).filter(Number.isFinite));
-  return { account, ...priceCart(requested, products, account.priceLevel?.name ?? null) };
+  return { account, ...priceCart(requested, products, account.priceLevel?.name ?? null, await sampleLimit()) };
 }
 
 export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
@@ -176,7 +184,8 @@ export async function postOrderToOrderTime(orderId: number) {
     ItemRef: { Id: l.product.otItemId },
     Quantity: Number(l.quantity),
     Price: Number(l.unitPrice),
-    ...(l.uom !== 'EA' ? { UomRef: { Name: l.uom } } : {}),
+    ...(l.uom !== 'EA' && l.uom !== 'SAMPLE' ? { UomRef: { Name: l.uom } } : {}),
+    ...(l.uom === 'SAMPLE' ? { Description: `FREE SAMPLE - ${l.product.name}`.slice(0, 200) } : {}),
   }));
   const feeItemId = Number(process.env.ORDERTIME_CARD_FEE_ITEM_ID);
   if (Number(order.cardFee) > 0 && feeItemId) {

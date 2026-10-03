@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { submitOrder } from '@/app/(portal)/cart/actions';
 import type { CatalogItem } from '@/lib/catalog';
+import type { SampleItem } from '@/lib/samples';
 import { orderTotals } from '@/lib/pricing';
 import { useCart } from './cart';
 import { Thumb } from './thumb';
@@ -48,8 +49,10 @@ function tokenizeCard(cfg: CardConfig, card: { number: string; month: string; ye
   });
 }
 
-export function CartView({ items, feePercent, card, forAccountId, canSubmit, blockedReason }: {
+export function CartView({ items, samples, sampleLimit, feePercent, card, forAccountId, canSubmit, blockedReason }: {
   items: CatalogItem[];
+  samples: SampleItem[];
+  sampleLimit: number;
   feePercent: number;
   card: CardConfig | null;
   forAccountId: number | null;
@@ -67,12 +70,20 @@ export function CartView({ items, feePercent, card, forAccountId, canSubmit, blo
   const acceptReady = useAcceptJs(pay === 'CARD' ? card : null);
   const byId = new Map(items.map(i => [i.id, i]));
 
+  const sampleById = new Map(samples.map(s => [s.id, s]));
+  const sampleLines = cart.lines.flatMap(l => {
+    if (l.uom !== 'SAMPLE') return [];
+    const s = sampleById.get(l.productId);
+    return s ? [{ ...l, sample: s }] : [];
+  });
+  const sampleUnits = sampleLines.reduce((n, l) => n + l.quantity, 0);
   const lines = cart.lines.flatMap(l => {
+    if (l.uom === 'SAMPLE') return [];
     const item = byId.get(l.productId);
     const opt = item?.options.find(o => o.uom === l.uom);
     return item && opt ? [{ ...l, item, opt, lineTotal: Math.round(opt.price * l.quantity * 100) / 100 }] : [];
   });
-  const missing = cart.lines.length - lines.length;
+  const missing = cart.lines.length - lines.length - sampleLines.length;
   const totals = orderTotals(lines.map(l => ({ unitPrice: l.opt.price, quantity: l.quantity })), pay, feePercent);
 
   async function submit(e: React.FormEvent) {
@@ -84,7 +95,7 @@ export function CartView({ items, feePercent, card, forAccountId, canSubmit, blo
       const opaqueData = pay === 'CARD' && card ? await tokenizeCard(card, cc) : null;
       const res = await submitOrder({
         forAccountId,
-        lines: lines.map(l => ({ productId: l.productId, uom: l.uom, quantity: l.quantity })),
+        lines: [...lines, ...sampleLines].map(l => ({ productId: l.productId, uom: l.uom, quantity: l.quantity })),
         payment: pay, expectedTotal: totals.total, customerPO: po, notes, opaqueData,
       });
       if (res.ok) {
@@ -100,7 +111,7 @@ export function CartView({ items, feePercent, card, forAccountId, canSubmit, blo
     setBusy(false);
   }
 
-  if (!lines.length) {
+  if (!lines.length && !sampleLines.length) {
     return (
       <section className="panel" style={{ textAlign: 'center', padding: 48 }}>
         <h2 className="display" style={{ margin: 0, fontSize: 24 }}>Your cart is empty</h2>
@@ -144,6 +155,35 @@ export function CartView({ items, feePercent, card, forAccountId, canSubmit, blo
             </tbody>
           </table>
         </div>
+        {sampleLines.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <div className="panel-head"><h3 className="display" style={{ margin: 0, fontSize: 18 }}>Free samples</h3><span className={`pill ${sampleUnits > sampleLimit ? 'pill-out' : 'pill-in'}`}>{sampleUnits} of {sampleLimit}</span></div>
+            <div className="table-wrap">
+              <table>
+                <tbody>
+                  {sampleLines.map(l => (
+                    <tr key={`s-${l.productId}`}>
+                      <td><div className="with-thumb"><Thumb src={l.sample.photo} category={l.sample.category} /><div><b>{l.sample.name}</b><span className="sub">Free sample · {l.sample.code}</span></div></div></td>
+                      <td className="num">
+                        <div className="step" style={{ display: 'inline-flex' }}>
+                          <button type="button" aria-label={`Fewer samples of ${l.sample.name}`} onClick={() => cart.set(l.productId, 'SAMPLE', l.quantity - 1)}>−</button>
+                          <output>{l.quantity}</output>
+                          <button type="button" aria-label={`More samples of ${l.sample.name}`} onClick={() => cart.set(l.productId, 'SAMPLE', l.quantity + 1)} disabled={sampleUnits >= sampleLimit || l.quantity >= l.sample.available}>+</button>
+                        </div>
+                      </td>
+                      <td className="num"><b>Free</b></td>
+                      <td className="num"><button type="button" className="btn btn-ghost btn-sm" onClick={() => cart.set(l.productId, 'SAMPLE', 0)}>Remove</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {!lines.length && <p className="note-warn" style={{ marginTop: 10 }}>Samples ship with a case order. Add at least one case.</p>}
+          </div>
+        )}
+        {samples.length > 0 && sampleUnits < sampleLimit && lines.length > 0 && (
+          <p style={{ marginTop: 14, fontSize: 14 }}><Link href="/#samples">Add free samples</Link> <span className="muted">({sampleLimit - sampleUnits} left for this order)</span></p>
+        )}
         <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginTop: 20 }}>
           <div className="field">
             <label htmlFor="po">PO number <span style={{ fontWeight: 400 }}>(optional)</span></label>
@@ -193,7 +233,7 @@ export function CartView({ items, feePercent, card, forAccountId, canSubmit, blo
           {blockedReason && <p className="note-warn" style={{ marginBottom: 12 }}>{blockedReason}</p>}
 
           <button type="submit" className="btn btn-kush" style={{ width: '100%' }}
-            disabled={busy || !canSubmit || (pay === 'CARD' && !acceptReady)}>
+            disabled={busy || !canSubmit || !lines.length || sampleUnits > sampleLimit || (pay === 'CARD' && !acceptReady)}>
             {busy ? 'Placing order…' : pay === 'CARD' ? `Pay ${money(totals.total)} and place order` : 'Place order'}
           </button>
           {!card && <p style={{ fontSize: 12.5, color: 'var(--ink-3)', marginBottom: 0 }}>Card payments aren’t switched on yet.</p>}

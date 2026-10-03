@@ -65,3 +65,25 @@ export async function toggleProductVisible(form: FormData) {
   await db.auditLog.create({ data: { actor: me.email, action: p.visible ? 'product.hide' : 'product.show', detail: { productId, code: p.code } } });
   refresh();
 }
+
+/** Offer or stop offering an item as a free sample. */
+export async function toggleSample(form: FormData) {
+  const me = await requireUser(['ADMIN']);
+  const productId = Number(form.get('productId'));
+  const p = await db.product.findUnique({ where: { id: productId } });
+  if (!p) return;
+  await db.product.update({ where: { id: productId }, data: { sampleOffered: !p.sampleOffered } });
+  await db.auditLog.create({ data: { actor: me.email, action: p.sampleOffered ? 'sample.remove' : 'sample.offer', detail: { productId, code: p.code } } });
+  refresh();
+  revalidatePath('/cart');
+}
+
+export async function saveSampleLimit(_: PhotoResult | null, form: FormData): Promise<PhotoResult> {
+  const me = await requireUser(['ADMIN']);
+  const n = Number(form.get('limit'));
+  if (!Number.isInteger(n) || n < 0 || n > 100) return { ok: false, message: 'Enter a whole number from 0 to 100.' };
+  await db.setting.upsert({ where: { key: 'sample_limit' }, create: { key: 'sample_limit', value: String(n), updatedBy: me.email }, update: { value: String(n), updatedBy: me.email } });
+  await db.auditLog.create({ data: { actor: me.email, action: 'settings.sample_limit', detail: { limit: n } } });
+  refresh();
+  return { ok: true, message: n ? `Up to ${n} free sample${n === 1 ? '' : 's'} per order.` : 'Samples are switched off.' };
+}

@@ -24,7 +24,7 @@ export async function assignPhotos(db: PrismaClient) {
   if (process.env.DISABLE_PHOTO_MATCH === '1') return { matched: 0, total: 0 };
   const index = await photoIndex();
   if (!index.size) return { matched: 0, total: 0 };
-  const products = await db.product.findMany({ where: { active: true }, select: { id: true, code: true, photoUrl: true, photoSource: true } });
+  const products = await db.product.findMany({ where: { active: true, OR: [{ wholesale: true }, { sampleOffered: true }] }, select: { id: true, code: true, photoUrl: true, photoSource: true } });
   let matched = 0;
   for (const p of products) {
     const m = index.match(p.code);

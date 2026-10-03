@@ -36,9 +36,10 @@ async function main() {
   const raw = fromDir ? loadDir(fromDir) : await fetchOrderTime(new OrderTime(configFromEnv()));
   const snap = buildSnapshot(raw, location, BLOCKED_STATES);
 
-  const inStock = snap.products.filter(p => p.available > 0).length;
-  const byCat = snap.products.reduce<Record<string, number>>((m, p) => { const k = `${p.brand === 'TOTALLY_BAKED' ? 'TB ' : ''}${p.category}`; m[k] = (m[k] ?? 0) + 1; return m; }, {});
-  console.log(`Products: ${snap.products.length} sellable (${inStock} in stock at ${location})`);
+  const cases = snap.products.filter(p => p.wholesale);
+  const inStock = cases.filter(p => p.available > 0).length;
+  const byCat = cases.reduce<Record<string, number>>((m, p) => { const k = `${p.brand === 'TOTALLY_BAKED' ? 'TB ' : ''}${p.category}`; m[k] = (m[k] ?? 0) + 1; return m; }, {});
+  console.log(`Products: ${cases.length} sellable (${inStock} in stock at ${location})`);
   console.log('By category:', byCat);
   console.log(`Accounts: ${snap.accounts.length} active, ${snap.accounts.filter(a => a.commissioned).length} with a commissioned rep`);
   console.log('Data issues:', JSON.stringify(snap.issues, null, 2));

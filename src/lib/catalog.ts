@@ -76,7 +76,7 @@ const ORDER = ['Flower', 'Pre-Rolls', 'Vapes', 'Concentrates', 'Edibles', 'Bulk 
 async function loadProducts(): Promise<ProductRecord[]> {
   if (process.env.DATABASE_URL) {
     const { db } = await import('./db');
-    const rows = await db.product.findMany({ where: { active: true, visible: true }, include: { prices: { include: { priceLevel: true } } } });
+    const rows = await db.product.findMany({ where: { active: true, visible: true, wholesale: true }, include: { prices: { include: { priceLevel: true } } } });
     return rows.map(r => ({
       otItemId: r.otItemId, code: r.code, sku: r.sku, name: r.name, category: r.category, brand: r.brand, isBulk: r.isBulk,
       basePrice: Number(r.basePrice), msrp: r.msrp === null ? null : Number(r.msrp), available: Number(r.available),
@@ -88,7 +88,7 @@ async function loadProducts(): Promise<ProductRecord[]> {
   // Local development without a database: use the snapshot written by `npm run sync:dry`
   const file = path.join(process.cwd(), 'data', 'snapshot.json');
   if (!existsSync(file)) return [];
-  return (JSON.parse(readFileSync(file, 'utf8')) as Snapshot).products;
+  return (JSON.parse(readFileSync(file, 'utf8')) as Snapshot).products.filter(p => p.wholesale !== false);
 }
 
 export async function getCatalog(levelName: string | null): Promise<CatalogItem[]> {

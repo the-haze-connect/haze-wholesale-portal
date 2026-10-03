@@ -2,6 +2,8 @@ import { CartView } from '@/components/cart-view';
 import { RepAccountPicker } from '@/components/rep-picker';
 import { authnetPublicConfig } from '@/lib/authnet';
 import { getCatalog } from '@/lib/catalog';
+import { sampleLimit } from '@/lib/orders';
+import { getSamples } from '@/lib/samples';
 import { shopContext } from '@/lib/context';
 import { db } from '@/lib/db';
 import { BLOCKED_STATES, CARD_FEE_PERCENT } from '@/lib/rules';
@@ -12,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export default async function CartPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser(['BUYER', 'REP', 'ADMIN']);
   const ctx = await shopContext(user, await searchParams);
-  const items = await getCatalog(ctx.level);
+  const [items, samples, limit] = await Promise.all([getCatalog(ctx.level), getSamples(), sampleLimit()]);
 
   const adminAccounts = user.role === 'ADMIN'
     ? await db.account.findMany({ where: { status: 'ACTIVE' }, select: { id: true, name: true }, orderBy: { name: 'asc' } })
@@ -34,7 +36,7 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
           <p>{ctx.account ? `For ${ctx.account.name} · ${ctx.account.tier}. ` : ''}Free shipping. Prices and stock are rechecked when you submit.</p>
         </div>
       </div>
-      <CartView items={items} feePercent={CARD_FEE_PERCENT} card={authnetPublicConfig()}
+      <CartView items={items} samples={samples} sampleLimit={limit} feePercent={CARD_FEE_PERCENT} card={authnetPublicConfig()}
         forAccountId={user.role === 'BUYER' ? null : ctx.account?.id ?? null}
         canSubmit={!blockedReason} blockedReason={blockedReason} />
     </main>

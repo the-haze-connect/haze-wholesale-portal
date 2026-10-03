@@ -70,3 +70,25 @@ describe('ShipStation matching', () => {
     expect(toTracking(s('1', { carrierCode: 'mystery' })).url).toBeNull();
   });
 });
+
+describe('free samples', () => {
+  const withSamples = new Map<number, ProductForPricing>([
+    ...products,
+    [40, { dbId: 4, otItemId: 40, code: 'S-V-1-Gelato', name: 'Gelato sample vape', isBulk: false, basePrice: 0, available: 30, levelPrices: {}, wholesale: false, sampleOffered: true }],
+    [41, { dbId: 5, otItemId: 41, code: 'V-1-1-Lemon OG', name: 'Single vape', isBulk: false, basePrice: 25, available: 30, levelPrices: {}, wholesale: false, sampleOffered: false }],
+  ]);
+  it('adds offered samples at $0 alongside a case order', () => {
+    const r = priceCart([{ productId: 10, uom: 'EA', quantity: 1 }, { productId: 40, uom: 'SAMPLE', quantity: 2 }], withSamples, null, 5);
+    expect(r.problems).toEqual([]);
+    expect(r.lines.find(l => l.uom === 'SAMPLE')).toMatchObject({ unitPrice: 0, lineTotal: 0, quantity: 2 });
+    expect(orderTotals(r.lines, 'CARD', 3).subtotal).toBe(100);
+  });
+  it('requires a case in the order and enforces the per-order limit', () => {
+    expect(priceCart([{ productId: 40, uom: 'SAMPLE', quantity: 1 }], withSamples, null, 5).problems[0]).toMatch(/ship with a case order/);
+    expect(priceCart([{ productId: 10, uom: 'EA', quantity: 1 }, { productId: 40, uom: 'SAMPLE', quantity: 6 }], withSamples, null, 5).problems[0]).toMatch(/limited to 5/);
+  });
+  it('rejects items that are not offered as samples or not sold by the case', () => {
+    expect(priceCart([{ productId: 10, uom: 'EA', quantity: 1 }, { productId: 41, uom: 'SAMPLE', quantity: 1 }], withSamples, null).problems[0]).toMatch(/no longer offered/);
+    expect(priceCart([{ productId: 41, uom: 'EA', quantity: 1 }], withSamples, null).problems[0]).toMatch(/isn’t sold by the case/);
+  });
+});

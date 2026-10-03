@@ -177,6 +177,13 @@ td input { font: inherit; font-size: 14px; height: 38px; width: 84px; text-align
 .cartbar { position: sticky; bottom: 20px; display: flex; justify-content: center; z-index: 9; pointer-events: none; }
 .cartbar > div { pointer-events: auto; background: var(--night); color: var(--night-text); border-radius: 16px; padding: 10px 10px 10px 22px; display: flex; align-items: center; gap: 18px; box-shadow: 0 10px 30px rgba(11,22,25,.28); flex-wrap: wrap; }
 
+/* Samples */
+.samples { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 12px; }
+.sample { border: 1px solid var(--line); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 8px; background: #fff; }
+.sample img, .sample-tile { width: 100%; height: 110px; object-fit: contain; border-radius: 10px; }
+.sample-tile { display: flex; align-items: flex-end; padding: 8px; color: #F2EFE8; font-size: 12px; font-weight: 800; text-transform: uppercase; opacity: .9; }
+.sample-body { flex: 1; display: flex; flex-direction: column; gap: 2px; font-size: 14px; line-height: 1.3; }
+
 /* Admin */
 .subnav { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
 .subnav a { min-height: 40px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 10px; font-weight: 600; font-size: 14.5px; color: var(--ink-2); text-decoration: none; }

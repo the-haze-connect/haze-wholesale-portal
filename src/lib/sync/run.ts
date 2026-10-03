@@ -12,5 +12,6 @@ export async function runSync() {
   const { db } = await import('../db');
   await applySnapshot(db, snap);
   const photos = await assignPhotos(db).catch(err => { console.error('[photos] failed:', err instanceof Error ? err.message : err); return null; });
-  return { photos, products: snap.products.length, inStock: snap.products.filter(p => p.available > 0).length, accounts: snap.accounts.length };
+  const cases = snap.products.filter(p => p.wholesale);
+  return { photos, products: cases.length, inStock: cases.filter(p => p.available > 0).length, singles: snap.products.length - cases.length, accounts: snap.accounts.length };
 }

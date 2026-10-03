@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
-import { setProductPhoto, type PhotoResult } from './actions';
+import { saveSampleLimit, setProductPhoto, type PhotoResult } from './actions';
 
 /** Upload a file or paste a link. Collapsed to one button until opened. */
 export function PhotoForm({ productId, hasPhoto }: { productId: number; hasPhoto: boolean }) {
@@ -30,6 +30,20 @@ export function PhotoForm({ productId, hasPhoto }: { productId: number; hasPhoto
         <button type="submit" className="btn btn-dark btn-sm" disabled={pending}>{pending ? 'Saving…' : 'Save photo'}</button>
       </div>
       {state && !state.ok && <p className="note-warn" role="alert">{state.message}</p>}
+    </form>
+  );
+}
+
+export function SampleLimitForm({ initial }: { initial: number }) {
+  const [state, action, pending] = useActionState<PhotoResult | null, FormData>(saveSampleLimit, null);
+  return (
+    <form action={action} style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+      <div className="field" style={{ width: 150 }}>
+        <label htmlFor="sample-limit">Free samples per order</label>
+        <input id="sample-limit" name="limit" type="number" min={0} max={100} defaultValue={initial} />
+      </div>
+      <button type="submit" className="btn btn-dark btn-sm" disabled={pending} style={{ minHeight: 44 }}>{pending ? 'Saving…' : 'Save'}</button>
+      {state && <p className={state.ok ? 'note-ok' : 'note-warn'} role="status" style={{ flexBasis: '100%' }}>{state.message}</p>}
     </form>
   );
 }

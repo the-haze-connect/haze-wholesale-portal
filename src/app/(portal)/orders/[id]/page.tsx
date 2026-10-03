@@ -14,7 +14,7 @@ import { OrderActionButton } from '../forms';
 
 export const dynamic = 'force-dynamic';
 
-const UOM_LABEL: Record<string, string> = { EA: 'Case', '1/4LB': '¼ lb bag', '1/2LB': '½ lb bag', LB: '1 lb bag' };
+const UOM_LABEL: Record<string, string> = { SAMPLE: 'Free sample', EA: 'Case', '1/4LB': '¼ lb bag', '1/2LB': '½ lb bag', LB: '1 lb bag' };
 
 export default async function OrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const user = await requireUser();
@@ -61,9 +61,9 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                 {order.lines.map(l => (
                   <tr key={l.id}>
                     <td><div className="with-thumb"><Thumb src={effectivePhoto(l.product.photoOverride, l.product.photoUrl)} category={l.product.category} /><div><b>{l.product.name}</b><span className="sub">{UOM_LABEL[l.uom] ?? l.uom} · {l.product.code}</span></div></div></td>
-                    <td className="num">{money(Number(l.unitPrice))}</td>
+                    <td className="num">{l.uom === 'SAMPLE' ? 'Free' : money(Number(l.unitPrice))}</td>
                     <td className="num">{Number(l.quantity)}</td>
-                    <td className="num"><b>{money(Number(l.lineTotal))}</b></td>
+                    <td className="num"><b>{l.uom === 'SAMPLE' ? 'Free' : money(Number(l.lineTotal))}</b></td>
                   </tr>
                 ))}
               </tbody>
