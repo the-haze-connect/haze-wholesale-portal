@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { healthReport } from '@/lib/health';
+import { HealthTable } from './table';
 
 export const dynamic = 'force-dynamic';
 
-const PREVIEW = 25;
+const PREVIEW = 8;
 
 export default async function DataHealth() {
   const [{ lists, syncedAt }, noPhoto] = await Promise.all([
@@ -18,16 +19,16 @@ export default async function DataHealth() {
       <div className="page-head">
         <div>
           <h1 className="display">Data health</h1>
-          <p>What to fix in Order Time so pricing, shipping and orders work smoothly. Lists update with every sync{synced ? ` (last: ${synced})` : ''}; fixes made in Order Time show up here within 5 minutes.</p>
+          <p>What to fix in Order Time so pricing, shipping and orders work smoothly. Click any issue to see the full list. Lists update with every sync{synced ? ` (last: ${synced})` : ''}; fixes in Order Time drop off within 5 minutes.</p>
         </div>
         <a className="btn btn-ghost" href="/admin/health/export">Download everything (CSV)</a>
       </div>
 
       <div className="kpis">
         {lists.map(l => (
-          <a key={l.key} href={`#${l.key}`} className="kpi" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Link key={l.key} href={`/admin/health/${l.key}`} className="kpi" style={{ textDecoration: 'none', color: 'inherit' }}>
             <small>{l.title}</small><strong style={l.rows.length ? undefined : { color: 'var(--kush-ink)' }}>{l.error ? '—' : l.rows.length}</strong>
-          </a>
+          </Link>
         ))}
         <Link href="/admin/products?show=nophoto" className="kpi" style={{ textDecoration: 'none', color: 'inherit' }}>
           <small>In-stock items without a photo</small><strong>{noPhoto}</strong>
@@ -37,22 +38,18 @@ export default async function DataHealth() {
       {lists.map(l => (
         <section key={l.key} id={l.key} className="panel">
           <div className="panel-head">
-            <h2 className="display" style={{ fontSize: 20 }}>{l.title} <span className={`pill ${l.rows.length ? 'pill-low' : 'pill-in'}`} style={{ verticalAlign: 'middle' }}>{l.error ? 'not checked' : l.rows.length ? l.rows.length : 'All clear'}</span></h2>
-            {l.rows.length > 0 && <a className="btn btn-ghost btn-sm" href={`/admin/health/export?list=${l.key}`}>Download CSV</a>}
+            <h2 className="display" style={{ fontSize: 20 }}>
+              <Link href={`/admin/health/${l.key}`} style={{ color: 'inherit', textDecoration: 'none' }}>{l.title}</Link>{' '}
+              <span className={`pill ${l.rows.length ? 'pill-low' : 'pill-in'}`} style={{ verticalAlign: 'middle' }}>{l.error ? 'not checked' : l.rows.length ? l.rows.length : 'All clear'}</span>
+            </h2>
+            {l.rows.length > 0 && <Link className="btn btn-dark btn-sm" href={`/admin/health/${l.key}`}>View all {l.rows.length}</Link>}
           </div>
           {l.error ? <p className="note-warn">{l.error}</p> : (
             <>
               <p style={{ margin: '0 0 4px', color: 'var(--ink-2)' }}>{l.why}</p>
               <p style={{ margin: '0 0 12px', fontSize: 14 }}><b>Fix:</b> {l.fix}</p>
-              {l.rows.length > 0 && (
-                <div className="table-wrap">
-                  <table>
-                    <thead><tr>{l.columns.map(c => <th key={c}>{c}</th>)}</tr></thead>
-                    <tbody>{l.rows.slice(0, PREVIEW).map((r, i) => <tr key={i}>{r.map((v, j) => <td key={j}>{String(v)}</td>)}</tr>)}</tbody>
-                  </table>
-                </div>
-              )}
-              {l.rows.length > PREVIEW && <p className="muted" style={{ marginBottom: 0 }}>Showing {PREVIEW} of {l.rows.length}. Download the CSV for the full list.</p>}
+              {l.rows.length > 0 && <HealthTable list={l} rows={l.rows.slice(0, PREVIEW)} />}
+              {l.rows.length > PREVIEW && <p style={{ marginBottom: 0 }}><Link href={`/admin/health/${l.key}`}>See all {l.rows.length} →</Link></p>}
             </>
           )}
         </section>

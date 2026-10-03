@@ -10,6 +10,8 @@ export interface HealthList {
   fix: string;
   columns: string[];
   rows: (string | number)[][];
+  /** Portal page for each row (same order as rows), when there is one. */
+  links?: (string | null)[];
   /** Shown instead of rows when the list couldn't be built. */
   error?: string;
 }
@@ -36,7 +38,7 @@ export async function healthReport(): Promise<{ lists: HealthList[]; syncedAt: s
   // 1. Case items with no base price: kept off the portal
   const noPriceCodes = issues.productsWithoutPrice ?? [];
   const noPrice = noPriceCodes.length
-    ? await db.product.findMany({ where: { code: { in: noPriceCodes } }, orderBy: [{ category: 'asc' }, { code: 'asc' }] })
+    ? (await db.product.findMany({ where: { code: { in: noPriceCodes } }, orderBy: [{ category: 'asc' }, { code: 'asc' }] })).sort((a, b) => Number(b.available) - Number(a.available))
     : [];
   const noPriceKnown = new Set(noPrice.map(p => p.code));
   lists.push({
@@ -45,8 +47,12 @@ export async function healthReport(): Promise<{ lists: HealthList[]; syncedAt: s
     fix: 'Set the item’s Price in Order Time (per lb for bulk flower).',
     columns: ['Order Time code', 'Description', 'Category', 'HQ stock'],
     rows: [
-      ...noPrice.sort((a, b) => Number(b.available) - Number(a.available)).map(p => [p.code, p.name, p.category, qty(p.available)]),
+      ...noPrice.map(p => [p.code, p.name, p.category, qty(p.available)]),
       ...noPriceCodes.filter(c => !noPriceKnown.has(c)).map(c => [c, '', '', '']),
+    ],
+    links: [
+      ...noPrice.map(p => `/admin/products?show=singles&q=${encodeURIComponent(p.code)}`),
+      ...noPriceCodes.filter(c => !noPriceKnown.has(c)).map(() => null),
     ],
   });
 
@@ -64,12 +70,14 @@ export async function healthReport(): Promise<{ lists: HealthList[]; syncedAt: s
     if (missing.length) missingRows.push([p.code, p.name, missing.join(', '), Number(p.basePrice), qty(p.available)]);
   }
   missingRows.sort((a, b) => Number(b[4]) - Number(a[4])); // in-stock items first
+  const missingLinks = missingRows.map(r => `/admin/products?show=all&q=${encodeURIComponent(String(r[0]))}`);
   lists.push({
     key: 'distro-prices', title: 'Missing Distro prices',
     why: 'Distro accounts pay per-item prices. Where an item has none for their level, they’re charged the base price. In-stock items are listed first.',
     fix: 'Add the item’s price on each listed price level in Order Time.',
     columns: ['Order Time code', 'Description', 'Missing levels', 'Base price', 'HQ stock'],
     rows: missingRows,
+    links: missingLinks,
   });
 
   // 3. Account address problems
@@ -84,6 +92,7 @@ export async function healthReport(): Promise<{ lists: HealthList[]; syncedAt: s
     why: 'The portal can’t confirm these shops are outside blocked states.',
     fix: 'Fill in the customer’s primary ship-to address in Order Time.',
     columns: ['Account', 'Rep', 'Order Time ID'],
+    links: accounts.filter(a => !a.rawShipState).map(a => `/admin/accounts/${a.id}`),
     rows: accounts.filter(a => !a.rawShipState).map(a => [a.name, repName(a), a.otCustomerId ?? '']),
   });
   lists.push({
@@ -91,6 +100,7 @@ export async function healthReport(): Promise<{ lists: HealthList[]; syncedAt: s
     why: 'The state on file isn’t a recognizable US state name or code.',
     fix: 'Correct the State on the customer’s ship-to address (e.g. "TX").',
     columns: ['Account', 'State as entered', 'Rep', 'Order Time ID'],
+    links: accounts.filter(a => a.rawShipState && !a.shipState).map(a => `/admin/accounts/${a.id}`),
     rows: accounts.filter(a => a.rawShipState && !a.shipState).map(a => [a.name, a.rawShipState!, repName(a), a.otCustomerId ?? '']),
   });
   lists.push({
@@ -98,6 +108,7 @@ export async function healthReport(): Promise<{ lists: HealthList[]; syncedAt: s
     why: `We don’t ship to ${BLOCKED_STATES.join(', ')}. These accounts can sign in but can’t order.`,
     fix: 'If the address is wrong, fix it in Order Time. Otherwise consider closing the account in Admin > Accounts.',
     columns: ['Account', 'State', 'Rep', 'Order Time ID'],
+    links: accounts.filter(a => a.shipState && BLOCKED_STATES.includes(a.shipState)).map(a => `/admin/accounts/${a.id}`),
     rows: accounts.filter(a => a.shipState && BLOCKED_STATES.includes(a.shipState)).map(a => [a.name, a.shipState!, repName(a), a.otCustomerId ?? '']),
   });
 
@@ -107,6 +118,7 @@ export async function healthReport(): Promise<{ lists: HealthList[]; syncedAt: s
     why: 'Their Order Time price level isn’t one the portal honors, so they get base prices.',
     fix: 'Move them to Tier 2, Tier 3 or a Distro level in Order Time, or leave as-is for base pricing.',
     columns: ['Account', 'Order Time level', 'Rep', 'Order Time ID'],
+    links: accounts.filter(a => a.otPriceLevel && !a.priceLevelId).map(a => `/admin/accounts/${a.id}`),
     rows: accounts.filter(a => a.otPriceLevel && !a.priceLevelId).map(a => [a.name, a.otPriceLevel!, repName(a), a.otCustomerId ?? '']),
   });
   lists.push({
@@ -114,6 +126,7 @@ export async function healthReport(): Promise<{ lists: HealthList[]; syncedAt: s
     why: 'They get base prices. Fine for retail shops at base; worth checking for anyone who should be on a tier.',
     fix: 'Set the customer’s Price Level in Order Time if they should get a discount.',
     columns: ['Account', 'Rep', 'Order Time ID'],
+    links: accounts.filter(a => !a.otPriceLevel).map(a => `/admin/accounts/${a.id}`),
     rows: accounts.filter(a => !a.otPriceLevel).map(a => [a.name, repName(a), a.otCustomerId ?? '']),
   });
 
@@ -125,7 +138,8 @@ export async function healthReport(): Promise<{ lists: HealthList[]; syncedAt: s
       why: 'Order Time needs a ship-to address on every sales order, so portal orders for these shops can’t be sent to Order Time.',
       fix: 'Add an address to the customer in Order Time (Addresses tab) and mark it primary.',
       columns: ['Account', 'Rep', 'Order Time ID'],
-      rows: accounts.filter(a => a.otCustomerId && !withAddress.has(a.otCustomerId)).map(a => [a.name, repName(a), a.otCustomerId!]),
+      links: accounts.filter(a => a.otCustomerId && !withAddress.has(a.otCustomerId)).map(a => `/admin/accounts/${a.id}`),
+    rows: accounts.filter(a => a.otCustomerId && !withAddress.has(a.otCustomerId)).map(a => [a.name, repName(a), a.otCustomerId!]),
     });
   } catch (err) {
     lists.push({
