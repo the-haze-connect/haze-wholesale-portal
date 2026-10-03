@@ -83,7 +83,9 @@ describe('case quantities only', () => {
     expect(isWholesaleItem('G-10-100-Space Cake', 'Display Box', 'Edibles', 'HAZE')).toBe(true);
     expect(isWholesaleItem('G-10-40-Blue Razz', 'Display', 'Edibles', 'HAZE')).toBe(true);
     expect(isWholesaleItem('G-20-40-Mango', 'Display', 'Edibles', 'HAZE')).toBe(true);
-    expect(isWholesaleItem('G-DD-Watermelon', 'Gummies', 'Edibles', 'HAZE')).toBe(true);
+    expect(isWholesaleItem('G-DD-2-Elderberry', 'Gummies', 'Edibles', 'HAZE')).toBe(false);
+    expect(isWholesaleItem('G-DD-10-Lemon Lavender', 'Gummies', 'Edibles', 'HAZE')).toBe(false);
+    expect(isWholesaleItem('G-DD-100-Elderberry', 'Display', 'Edibles', 'HAZE')).toBe(true);
     expect(isWholesaleItem('F-AAA-3.5-Runtz (H)', 'Flower-Exotic-3.5g', 'Flower', 'HAZE')).toBe(true);
     expect(isWholesaleItem('S-C-B-Lemon Cherry Gelato (I)', 'SAMPLE-Concentrate', 'Concentrates', 'HAZE')).toBe(false);
     expect(isWholesaleItem('C-R-1-***', 'Concentrate-Live Rosin-1g***', 'Concentrates', 'HAZE')).toBe(false);

@@ -67,9 +67,12 @@ export function isWholesaleItem(code: string, description: string, category: str
   if (brand === 'HAZE') {
     if (category === 'Vapes') return packCount(code, /^V-\d+-(\d+)-/) >= 10;
     if (category === 'Pre-Rolls') return packCount(code, /^PR-(?:[A-Z]+-)?(\d+)(?:-|$)/) > 1;
-    // Gummy displays and cases: 40ct, 50ct and 100ct (G-10-40-, G-20-40-, G-xx-50-, G-10-100-) and all G-DD- items.
-    // Single 2ct packs (G-xx-2-) stay off the portal.
-    if (category === 'Edibles') return /^G-DD-/i.test(code) || packCount(code, /^G-\d+-(\d+)(?:-|$)/) >= 40;
+    // Gummy displays and cases: 40ct, 50ct and 100ct (G-10-40-, G-20-40-, G-xx-50-, G-10-100-) and Dream Drops cases.
+    // Single packs stay off the portal: G-xx-2- gummies and G-DD-2- / G-DD-10- Dream Drops.
+    if (category === 'Edibles') {
+      if (/^G-DD-/i.test(code)) return !/^G-DD-(2|10)(?:-|$)/i.test(code);
+      return packCount(code, /^G-\d+-(\d+)(?:-|$)/) >= 40;
+    }
   }
   return true; // flower jars sell per jar; concentrates and Totally Baked items are already case SKUs
 }
