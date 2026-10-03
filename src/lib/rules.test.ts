@@ -103,3 +103,22 @@ describe('state cleanup', () => {
     expect(normalizeState('Ontario')).toBeNull();
   });
 });
+
+import { customerProfile } from './sync/profile';
+describe('customerProfile', () => {
+  it('pulls contact, phone, addresses and custom fields, and never card data', () => {
+    const p = customerProfile({
+      Name: 'Shop', PrimaryContact: { FirstName: 'Dana', LastName: 'Ray', Phone: '512-555-0101', Email: 'dana@shop.com' },
+      PrimaryShipAddress: { Addr1: 'Shop LLC', Addr2: '1 Main St', City: 'Austin', State: 'TX', Zip: '78701' },
+      BillAddress: { Addr1: 'PO Box 9', City: 'Austin', State: 'TX', Zip: '78702', Email: 'ap@shop.com' },
+      TermRef: { Id: 1, Name: 'Net 15' }, TypeRef: { Id: 2, Name: 'Smoke Shop' }, CreditLimit: 5000, OnCreditHold: false,
+      CreditCardNo: '4111111111111111', ShippingInstructions: 'Back door',
+      CustomFields: [{ Caption: 'Hemp License #', Value: 'HL-1' }, { Caption: 'Credit Card Token', Value: 'x' }, { Caption: 'Empty', Value: '' }],
+    });
+    expect(p).toMatchObject({ contact: 'Dana Ray', phone: '512-555-0101', email: 'dana@shop.com', terms: 'Net 15', customerType: 'Smoke Shop', creditLimit: 5000, shippingInstructions: 'Back door' });
+    expect(p.shipTo?.lines).toEqual(['Shop LLC', '1 Main St', 'Austin, TX 78701']);
+    expect(p.billTo?.email).toBe('ap@shop.com');
+    expect(p.customFields).toEqual([{ label: 'Hemp License #', value: 'HL-1' }]);
+    expect(JSON.stringify(p)).not.toContain('4111');
+  });
+});

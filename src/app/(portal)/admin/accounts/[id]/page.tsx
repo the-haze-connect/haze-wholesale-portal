@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import { money } from '@/components/format';
 import { db } from '@/lib/db';
 import { STATUS_LABEL, fmtDate, statusOf } from '@/lib/order-access';
-import { BLOCKED_STATES } from '@/lib/rules';
+import { BLOCKED_STATES, PRICE_LEVELS, COMMISSION } from '@/lib/rules';
+import type { AccountProfile, ProfileAddress } from '@/lib/sync/profile';
 import { removeLogin, setAccountStatus, setLoginAccess } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,26 @@ export default async function AccountAdmin({ params }: { params: Promise<{ id: s
   const approved = a.orders.filter(o => o.status === 'APPROVED');
   const portalSales = approved.reduce((s, o) => s + Number(o.subtotal), 0);
   const blocked = a.shipState && BLOCKED_STATES.includes(a.shipState);
+  const p = (a.profile as AccountProfile | null) ?? null;
+  const rule = a.priceLevel ? PRICE_LEVELS[a.priceLevel.name] : undefined;
+  const tierMeaning = !a.priceLevel
+    ? (a.otPriceLevel ? `Order Time has “${a.otPriceLevel}”, which the portal doesn’t honor, so this shop pays base prices.` : 'No price level in Order Time, so this shop pays base prices.')
+    : rule?.kind === 'PERCENT_OFF' ? `${rule.percentOff}% off base price on every item.`
+    : rule?.kind === 'ITEM_PRICE' ? 'Per-item prices from this level in Order Time; base price where an item has none.'
+    : 'Base prices.';
+  const commissionNote = !a.rep?.commissioned ? 'House account: no commission.'
+    : `${a.rep.name} earns ${Math.round((rule?.tierGroup === 'DISTRO' ? COMMISSION.distroRate : COMMISSION.retailRate) * 100)}% of product subtotal; bulk flower by the pound.`;
+  const addr = (x: ProfileAddress | null | undefined) => x && (
+    <>
+      {x.lines.map(l => <div key={l}>{l}</div>)}
+      {x.contact && <div className="muted">Attn: {x.contact}</div>}
+      {x.phone && <div><a href={`tel:${x.phone.replace(/[^\d+]/g, '')}`}>{x.phone}</a></div>}
+      {x.email && <div><a href={`mailto:${x.email}`}>{x.email}</a></div>}
+    </>
+  );
+  const row = (label: string, value: React.ReactNode) => value ? (
+    <div className="sum-row" style={{ alignItems: 'flex-start' }}><span>{label}</span><span style={{ textAlign: 'right', fontWeight: 600 }}>{value}</span></div>
+  ) : null;
 
   return (
     <main className="wrap">
@@ -28,15 +49,49 @@ export default async function AccountAdmin({ params }: { params: Promise<{ id: s
         <div>
           <p className="label"><Link href="/admin/accounts">Accounts</Link></p>
           <h1 className="display">{a.name}</h1>
-          <p>{a.priceLevel?.name ?? 'Base price'} · {a.rep ? `${a.rep.name}${a.rep.commissioned ? '' : ' (house)'}` : 'House account'} · {a.shipState ?? 'No state on file'}{a.terms ? ` · ${a.terms}` : ''}</p>
+          <p>{a.priceLevel?.name ?? 'Base price'} · {a.rep ? `${a.rep.name}${a.rep.commissioned ? '' : ' (house)'}` : 'House account'} · {[a.city, a.shipState].filter(Boolean).join(', ') || 'No state on file'}{a.terms ? ` · ${a.terms}` : ''}{p?.phone ? ` · ${p.phone}` : ''}</p>
         </div>
         {a.status === 'ACTIVE' && !blocked && <Link className="btn btn-kush" href={`/?for=${a.id}`}>Order for this shop</Link>}
       </div>
 
+      {p?.onCreditHold && <p className="note-warn">This customer is on credit hold in Order Time.</p>}
       {blocked && <p className="note-warn">This account’s ship-to state ({a.shipState}) is blocked, so it can’t order. Fix the address in Order Time if it’s wrong.</p>}
 
       <div className="two">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+          <section className="panel">
+            <div className="panel-head"><h2 className="display">Order Time details</h2>{a.otCustomerId && <span className="muted">Customer {a.otCustomerId}</span>}</div>
+            {p ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '4px 28px' }}>
+                <div>
+                  {row('Contact', p.contact)}
+                  {row('Phone', p.phone && <a href={`tel:${p.phone.replace(/[^\d+]/g, '')}`}>{p.phone}</a>)}
+                  {row('Other phone', p.altPhone && p.altPhone !== p.phone && <a href={`tel:${p.altPhone.replace(/[^\d+]/g, '')}`}>{p.altPhone}</a>)}
+                  {row('Email', p.email && <a href={`mailto:${p.email}`}>{p.email}</a>)}
+                  {row('Website', p.website && (/^https?:/i.test(p.website) ? <a href={p.website} target="_blank" rel="noreferrer">{p.website}</a> : p.website))}
+                  {row('Ship to', addr(p.shipTo) ?? <span className="muted">None on file</span>)}
+                  {row('Bill to', addr(p.billTo))}
+                  {row('Shipping instructions', p.shippingInstructions)}
+                </div>
+                <div>
+                  {row('Customer type', p.customerType)}
+                  {row('Account #', p.accountNumber)}
+                  {row('Terms', p.terms ?? a.terms)}
+                  {row('Payment method', p.paymentMethod)}
+                  {row('Ship method', p.shipMethod)}
+                  {row('Credit limit', p.creditLimit !== null ? money(p.creditLimit) : null)}
+                  {row('Credit hold', p.onCreditHold ? 'Yes' : null)}
+                  {row('Hemp license #', a.licenseNumber ?? p.customFields.find(f => f.label === 'Hemp License #')?.value)}
+                  {row('Tax registration #', p.taxRegistration)}
+                  {row('Sales tax certificate', p.salesTaxCertificate)}
+                  {row('Sales tax code', p.salesTaxCode)}
+                  {p.customFields.filter(f => f.label !== 'Hemp License #').map(f => <div key={f.label}>{row(f.label, f.value)}</div>)}
+                </div>
+              </div>
+            ) : <p className="muted">Details load with the next Order Time sync (within 5 minutes).</p>}
+            {p?.note && <p style={{ marginTop: 14, marginBottom: 0 }}><span className="label">Order Time note</span><br /><span style={{ whiteSpace: 'pre-line' }}>{p.note}</span></p>}
+          </section>
+
           <section className="panel">
             <div className="panel-head"><h2 className="display">Logins</h2><Link className="btn btn-ghost btn-sm" href="/invites">Invite a buyer</Link></div>
             {a.users.length ? (
@@ -99,6 +154,14 @@ export default async function AccountAdmin({ params }: { params: Promise<{ id: s
               ))}
               <button className="btn btn-dark" type="submit">Save status</button>
             </form>
+          </section>
+          <section className="panel">
+            <p className="label">Pricing and commission</p>
+            <p style={{ margin: '6px 0 2px', fontSize: 20, fontWeight: 700 }}>{a.priceLevel?.name ?? 'Base price'}</p>
+            <p style={{ margin: 0, color: 'var(--ink-2)', fontSize: 14 }}>{tierMeaning}</p>
+            <div className="sum-row" style={{ marginTop: 10 }}><span>Rep</span><b>{a.rep?.name ?? 'House'}</b></div>
+            <p className="muted" style={{ fontSize: 13, margin: '4px 0 10px' }}>{commissionNote}</p>
+            <Link className="btn btn-ghost btn-sm" href={`/?for=${a.id}`}>See this shop’s prices</Link>
           </section>
           <section className="panel">
             <p className="label">At a glance</p>

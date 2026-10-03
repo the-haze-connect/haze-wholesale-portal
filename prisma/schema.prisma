@@ -67,6 +67,10 @@ model Account {
   shipState      String? // normalized 2-letter code
   rawShipState   String? // as typed in Order Time, for the data health report
   otPriceLevel   String? // Order Time price level name, even if outdated
+  profile        Json? // Order Time contact, addresses, terms, credit (see lib/sync/profile.ts)
+  phone          String?
+  email          String?
+  city           String?
   licenseNumber  String?
   licenseExpires DateTime?
   status         AccountStatus @default(PENDING)

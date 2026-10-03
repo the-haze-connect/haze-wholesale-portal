@@ -1,4 +1,5 @@
 import type { OtCustomer, OtInventoryByLocation, OtItem, OtLevelItemPrice, OtPriceLevel, OtSalesRep } from '../ordertime/types';
+import { customerProfile, type AccountProfile } from './profile';
 import { COMMISSIONED_REPS, ITEM_GROUPS, PRICE_LEVELS, isSampleItem, isWholesaleItem, normalizeState } from '../rules';
 
 export interface RawOrderTime {
@@ -39,6 +40,7 @@ export interface SnapshotAccount {
   terms: string | null;
   shipState: string | null;
   rawShipState: string | null;
+  profile?: AccountProfile;
   licenseNumber: string | null;
 }
 
@@ -141,6 +143,7 @@ export function buildSnapshot(raw: RawOrderTime, stockLocation = 'HQ', blockedSt
       shipState: normalizeState(rawState),
       rawShipState: rawState,
       licenseNumber: field(c.CustomFields, 'Hemp License #'),
+      profile: customerProfile(c as unknown as Record<string, unknown>),
     };
   });
 

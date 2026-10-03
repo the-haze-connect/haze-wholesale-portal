@@ -21,7 +21,11 @@ export default async function AccountsAdmin({ searchParams }: { searchParams: Pr
   const page = Math.max(1, Number(sp.page) || 1);
 
   const where: Prisma.AccountWhereInput = {
-    ...(q ? { name: { contains: q, mode: 'insensitive' } } : {}),
+    ...(q ? { OR: [
+      { name: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } },
+      { city: { contains: q, mode: 'insensitive' } }, { phone: { contains: q } },
+      ...(q.replace(/\D/g, '').length >= 4 ? [{ phone: { contains: q.replace(/\D/g, '').slice(-4) } }] : []),
+    ] } : {}),
     ...(repId ? { repId } : {}),
     ...(show === 'active' ? { status: 'ACTIVE' } :
       show === 'hold' ? { status: 'ON_HOLD' } :
@@ -76,7 +80,7 @@ export default async function AccountsAdmin({ searchParams }: { searchParams: Pr
 
       <section className="panel">
         <form className="filters" action="/admin/accounts" method="get" style={{ marginBottom: 12 }}>
-          <div className="field" style={{ flex: '1 1 240px' }}><label htmlFor="q">Search</label><input id="q" name="q" defaultValue={q} placeholder="Shop name" /></div>
+          <div className="field" style={{ flex: '1 1 240px' }}><label htmlFor="q">Search</label><input id="q" name="q" defaultValue={q} placeholder="Shop name, city, email or phone" /></div>
           <div className="field">
             <label htmlFor="rep">Rep</label>
             <select id="rep" name="rep" defaultValue={repId ?? ''}>
@@ -106,7 +110,7 @@ export default async function AccountsAdmin({ searchParams }: { searchParams: Pr
                   const [label, pill] = STATUS[a.status];
                   return (
                     <tr key={a.id}>
-                      <td><Link href={`/admin/accounts/${a.id}`}><b>{a.name}</b></Link>{a.terms && <span className="sub">{a.terms}</span>}</td>
+                      <td><Link href={`/admin/accounts/${a.id}`}><b>{a.name}</b></Link><span className="sub">{[a.city, a.phone, a.terms].filter(Boolean).join(' · ')}</span></td>
                       <td>{tierOk ? a.priceLevel!.name : <span className="muted">{a.priceLevel ? `${a.priceLevel.name} (old) → base` : 'Base price'}</span>}</td>
                       <td>{a.rep ? <>{a.rep.name}{!a.rep.commissioned && <span className="sub">House</span>}</> : <span className="muted">House</span>}</td>
                       <td>{a.shipState ? (blockedState ? <span className="pill pill-out">{a.shipState} blocked</span> : a.shipState) : <span className="muted">Missing</span>}</td>
