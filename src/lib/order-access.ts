@@ -16,4 +16,8 @@ export const STATUS_LABEL: Record<string, { text: string; pill: string }> = {
   CANCELLED: { text: 'Cancelled', pill: 'pill-out' },
 };
 
+/** Status shown to people: approved orders become "Shipped" once ShipStation has tracking. */
+export const statusOf = (o: { status: string; shippedAt?: Date | null }) =>
+  o.status === 'APPROVED' && o.shippedAt ? { text: 'Shipped', pill: 'pill-in' } : STATUS_LABEL[o.status]!;
+
 export const fmtDate = (d: Date) => d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });

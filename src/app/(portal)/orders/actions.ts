@@ -44,3 +44,25 @@ export async function saveAchInstructions(_: ActionResult | null, form: FormData
   revalidatePath('/orders');
   return { ok: true, message: 'ACH / wire instructions saved.' };
 }
+
+export async function checkShipping(_: ActionResult | null, form: FormData): Promise<ActionResult> {
+  await requireUser(['ADMIN']);
+  const id = Number(form.get('orderId'));
+  const { shipmentsForOrderNumber, shipmentsForSalesOrder, shipstationConfigured, toTracking } = await import('@/lib/shipstation');
+  if (!shipstationConfigured()) return { ok: false, message: 'Add SHIPSTATION_API_KEY and SHIPSTATION_API_SECRET in Railway first.' };
+  const o = await db.order.findUnique({ where: { id }, select: { otSalesOrderNo: true } });
+  if (!o?.otSalesOrderNo) return { ok: false, message: 'This order isn’t in Order Time yet.' };
+  try {
+    const found = shipmentsForSalesOrder(await shipmentsForOrderNumber(String(o.otSalesOrderNo)), o.otSalesOrderNo).map(toTracking);
+    if (!found.length) {
+      await db.order.update({ where: { id }, data: { shipCheckedAt: new Date() } });
+      return { ok: true, message: `No shipment in ShipStation for sales order ${o.otSalesOrderNo} yet.` };
+    }
+    const first = found.map(t => t.shipDate).filter(Boolean).sort()[0];
+    await db.order.update({ where: { id }, data: { tracking: found as object[], shippedAt: first ? new Date(first) : new Date(), shipCheckedAt: new Date() } });
+    revalidatePath(`/orders/${id}`);
+    return { ok: true, message: `Shipped: ${found.map(t => `${t.carrier} ${t.number}`).join(', ')}` };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'ShipStation lookup failed.' };
+  }
+}

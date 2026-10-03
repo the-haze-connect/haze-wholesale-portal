@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { money } from '@/components/format';
 import { db } from '@/lib/db';
-import { STATUS_LABEL, fmtDate, orderScope } from '@/lib/order-access';
+import { fmtDate, orderScope, statusOf } from '@/lib/order-access';
 import { ACH_SETTING, getSetting } from '@/lib/orders';
 import { requireUser } from '@/lib/session';
 import { AdminNav } from '../admin/nav';
@@ -62,7 +62,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                       <td>{o.account.name}{o.customerPO && <span className="sub">PO {o.customerPO}</span>}</td>
                       <td>{o.paymentMethod === 'CARD' ? `Card${o.cardLast4 ? ` ••${o.cardLast4}` : ''}` : 'ACH / wire'}</td>
                       <td>
-                        <span className={`pill ${STATUS_LABEL[o.status]!.pill}`}>{STATUS_LABEL[o.status]!.text}</span>
+                        <span className={`pill ${statusOf(o).pill}`}>{statusOf(o).text}</span>
                         {isAdmin && o.status === 'APPROVED' && (o.otSalesOrderNo ? <span className="sub">SO {o.otSalesOrderNo}</span> : <span className="sub" style={{ color: 'var(--red-ink)' }}>Not in Order Time</span>)}
                       </td>
                       <td className="num"><b>{money(Number(o.total))}</b></td>

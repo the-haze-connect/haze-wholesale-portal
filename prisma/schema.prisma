@@ -199,6 +199,10 @@ model Order {
   cardLast4      String?
   paidAt         DateTime?
   approvedBy     String?
+  shippedAt      DateTime?
+  tracking       Json? // [{ carrier, service, number, url, shipDate }] from ShipStation
+  shipCheckedAt  DateTime?
+  shipEmailedAt  DateTime?
   lines          OrderLine[]
   commissions    CommissionEntry[]
   createdAt      DateTime          @default(now())

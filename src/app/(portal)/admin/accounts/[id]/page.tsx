@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { money } from '@/components/format';
 import { db } from '@/lib/db';
-import { STATUS_LABEL, fmtDate } from '@/lib/order-access';
+import { STATUS_LABEL, fmtDate, statusOf } from '@/lib/order-access';
 import { BLOCKED_STATES } from '@/lib/rules';
 import { removeLogin, setAccountStatus, setLoginAccess } from '../actions';
 
@@ -78,7 +78,7 @@ export default async function AccountAdmin({ params }: { params: Promise<{ id: s
                       <tr key={o.id}>
                         <td><Link href={`/orders/${o.id}`}><b>#{o.id}</b></Link><span className="sub">{fmtDate(o.createdAt)}</span></td>
                         <td>{o.paymentMethod === 'CARD' ? 'Card' : 'ACH / wire'}</td>
-                        <td><span className={`pill ${STATUS_LABEL[o.status]!.pill}`}>{STATUS_LABEL[o.status]!.text}</span></td>
+                        <td><span className={`pill ${statusOf(o).pill}`}>{statusOf(o).text}</span></td>
                         <td className="num"><b>{money(Number(o.total))}</b></td>
                       </tr>
                     ))}

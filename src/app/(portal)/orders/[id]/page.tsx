@@ -4,11 +4,12 @@ import { money } from '@/components/format';
 import { Thumb } from '@/components/thumb';
 import { effectivePhoto } from '@/lib/catalog';
 import { db } from '@/lib/db';
-import { STATUS_LABEL, fmtDate, orderScope } from '@/lib/order-access';
+import { fmtDate, orderScope, statusOf } from '@/lib/order-access';
+import type { Tracking } from '@/lib/shipstation';
 import { ACH_SETTING, getSetting } from '@/lib/orders';
 import { CARD_FEE_PERCENT } from '@/lib/rules';
 import { requireUser } from '@/lib/session';
-import { approvePaidOrder, cancelUnpaidOrder, retryOrderTime } from '../actions';
+import { approvePaidOrder, cancelUnpaidOrder, checkShipping, retryOrderTime } from '../actions';
 import { OrderActionButton } from '../forms';
 
 export const dynamic = 'force-dynamic';
@@ -30,7 +31,8 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const canSeeCommission = isAdmin || user.role === 'REP';
   const waitingAch = order.status === 'SUBMITTED' && order.paymentMethod === 'ACH_WIRE';
   const ach = waitingAch ? await getSetting(ACH_SETTING) : null;
-  const status = STATUS_LABEL[order.status]!;
+  const status = statusOf(order);
+  const tracking = (order.tracking as Tracking[] | null) ?? [];
 
   return (
     <main className="wrap">
@@ -81,6 +83,24 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
             {order.paidAt && <div className="sum-row"><span>Paid</span><b>{fmtDate(order.paidAt)}</b></div>}
           </section>
 
+          {tracking.length > 0 && (
+            <section className="panel">
+              <p className="label">Shipped{order.shippedAt ? ` ${order.shippedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}` : ''}</p>
+              {tracking.map(t => (
+                <div key={t.number} className="sum-row">
+                  <span>{t.carrier}{t.service && <span className="sub">{t.service}</span>}</span>
+                  {t.url ? <a href={t.url} target="_blank" rel="noreferrer"><b>{t.number}</b></a> : <b>{t.number}</b>}
+                </div>
+              ))}
+            </section>
+          )}
+          {order.status === 'APPROVED' && !tracking.length && !isAdmin && (
+            <section className="panel">
+              <p className="label">Shipping</p>
+              <p style={{ margin: '8px 0 0', color: 'var(--ink-2)' }}>Tracking shows here once your order ships.</p>
+            </section>
+          )}
+
           {waitingAch && (
             <section className="panel">
               <p className="label">Pay by ACH or wire</p>
@@ -111,7 +131,17 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                 </>
               )}
               {order.status === 'APPROVED' && (order.otSalesOrderNo
-                ? <p style={{ margin: 0 }}>Order Time sales order <b>{order.otSalesOrderNo}</b>{order.otPostedAt ? ` · sent ${fmtDate(order.otPostedAt)}` : ''}</p>
+                ? (
+                  <>
+                    <p style={{ margin: 0 }}>Order Time sales order <b>{order.otSalesOrderNo}</b>{order.otPostedAt ? ` · sent ${fmtDate(order.otPostedAt)}` : ''}</p>
+                    {!order.shippedAt && (
+                      <>
+                        <p className="muted" style={{ fontSize: 13, margin: 0 }}>Not shipped yet{order.shipCheckedAt ? ` · ShipStation checked ${fmtDate(order.shipCheckedAt)}` : ''}</p>
+                        <OrderActionButton action={checkShipping} orderId={order.id} label="Check ShipStation now" kind="ghost" />
+                      </>
+                    )}
+                  </>
+                )
                 : (
                   <>
                     <p className="note-warn">Not in Order Time yet{order.otError ? `: ${order.otError}` : '.'}</p>

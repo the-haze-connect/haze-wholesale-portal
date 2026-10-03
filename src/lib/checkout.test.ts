@@ -54,3 +54,19 @@ describe('parseChargeResponse', () => {
       .toEqual({ ok: false, message: 'Card not charged: User authentication failed.' });
   });
 });
+
+import { shipmentsForSalesOrder, toTracking } from './shipstation';
+
+describe('ShipStation matching', () => {
+  const s = (orderNumber: string, extra: Partial<{ voided: boolean; trackingNumber: string | null; carrierCode: string }> = {}) =>
+    ({ orderNumber, trackingNumber: '1Z999', carrierCode: 'ups', serviceCode: 'ups_ground', shipDate: '2026-10-05', voided: false, ...extra });
+  it('keeps shipments for exactly this sales order number, with or without a prefix', () => {
+    const got = shipmentsForSalesOrder([s('1234'), s('SO-1234'), s('11234'), s('12345'), s('1234', { voided: true }), s('1234', { trackingNumber: null })], 1234);
+    expect(got.map(x => x.orderNumber)).toEqual(['1234', 'SO-1234']);
+  });
+  it('builds carrier tracking links', () => {
+    expect(toTracking(s('1'))).toMatchObject({ carrier: 'UPS', url: 'https://www.ups.com/track?tracknum=1Z999', service: 'ups ground' });
+    expect(toTracking(s('1', { carrierCode: 'stamps_com' })).url).toContain('usps.com');
+    expect(toTracking(s('1', { carrierCode: 'mystery' })).url).toBeNull();
+  });
+});

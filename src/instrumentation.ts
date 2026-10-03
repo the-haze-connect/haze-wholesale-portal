@@ -1,30 +1,44 @@
 /**
- * Runs once when the server starts. Keeps the catalog, HQ stock, prices, reps and
- * customers in step with Order Time: one sync at startup, then every 5 minutes.
+ * Runs once when the server starts:
+ * - Order Time sync (catalog, HQ stock, prices, reps, customers, store photos): at startup, then every 5 minutes.
+ * - ShipStation tracking for shipped portal orders: every 15 minutes, when ShipStation keys are set.
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
-  if (!process.env.DATABASE_URL || !process.env.ORDERTIME_API_KEY) return;
-  if (process.env.DISABLE_ORDERTIME_SYNC === '1') return;
+  if (!process.env.DATABASE_URL) return;
 
-  const minutes = Number(process.env.ORDERTIME_SYNC_MINUTES ?? 5);
-  const { runSync } = await import('./lib/sync/run');
-  let running = false;
-
-  const tick = async () => {
-    if (running) return;
-    running = true;
-    const started = Date.now();
-    try {
-      const r = await runSync();
-      console.log(`[sync] ${r.products} products (${r.inStock} in stock), ${r.accounts} accounts${r.photos ? `, ${r.photos.matched}/${r.photos.total} with store photos` : ''} in ${Math.round((Date.now() - started) / 1000)}s`);
-    } catch (err) {
-      console.error('[sync] failed:', err instanceof Error ? err.message : err);
-    } finally {
-      running = false;
-    }
+  const every = (name: string, minutes: number, firstDelayMs: number, job: () => Promise<string | null>) => {
+    let running = false;
+    const tick = async () => {
+      if (running) return;
+      running = true;
+      const started = Date.now();
+      try {
+        const msg = await job();
+        if (msg) console.log(`[${name}] ${msg} in ${Math.round((Date.now() - started) / 1000)}s`);
+      } catch (err) {
+        console.error(`[${name}] failed:`, err instanceof Error ? err.message : err);
+      } finally {
+        running = false;
+      }
+    };
+    setTimeout(tick, firstDelayMs);
+    setInterval(tick, minutes * 60_000);
   };
 
-  setTimeout(tick, 5_000);
-  setInterval(tick, minutes * 60_000);
+  if (process.env.ORDERTIME_API_KEY && process.env.DISABLE_ORDERTIME_SYNC !== '1') {
+    const { runSync } = await import('./lib/sync/run');
+    every('sync', Number(process.env.ORDERTIME_SYNC_MINUTES ?? 5), 5_000, async () => {
+      const r = await runSync();
+      return `${r.products} products (${r.inStock} in stock), ${r.accounts} accounts${r.photos ? `, ${r.photos.matched}/${r.photos.total} with store photos` : ''}`;
+    });
+  }
+
+  if (process.env.SHIPSTATION_API_KEY && process.env.DISABLE_SHIPPING_SYNC !== '1') {
+    const [{ syncShipping }, { db }] = await Promise.all([import('./lib/sync/shipping'), import('./lib/db')]);
+    every('shipping', Number(process.env.SHIPPING_SYNC_MINUTES ?? 15), 60_000, async () => {
+      const r = await syncShipping(db);
+      return r && r.checked ? `checked ${r.checked} open orders, ${r.shipped} newly shipped` : null;
+    });
+  }
 }

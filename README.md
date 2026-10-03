@@ -45,9 +45,13 @@ B2B ordering portal for The Haze Connect and Totally Baked wholesale accounts. O
 - Each sync matches products to photos on the brand storefronts (public `products.json`, cached for an hour): The Haze Connect by SKU family and strain (case SKUs match the single-unit store SKUs; bulk flower uses the flower strain photo), Totally Baked by product line. Set `PHOTO_STORE_HAZE` / `PHOTO_STORE_TB` to change the stores, or `DISABLE_PHOTO_MATCH=1` to turn it off.
 - **Admin → Products**: see which in-stock items still need a photo, upload one (JPG/PNG/WebP/GIF up to 4 MB, stored in the database and served from `/photos/<id>`) or paste an image link, hide a wrong automatic photo, or hide a product from the portal.
 
+## Shipping and tracking
+
+- Every 15 minutes the portal asks ShipStation (API v1, read-only) about approved orders that are in Order Time but not shipped, matched by the Order Time sales order number (a prefix like "SO-" is fine). Shipped orders show **Shipped** with carrier and tracking links; admins can click **Check ShipStation now** on an order.
+- Needs `SHIPSTATION_API_KEY` and `SHIPSTATION_API_SECRET`. Buyer ship emails stay with ShipStation unless `PORTAL_SHIP_EMAILS=1`.
+
 ## Next steps
 
-- Shipping and tracking updates from Order Time / ShipStation back to the order page.
 - Reorder from a past order.
 
 ## Run locally
