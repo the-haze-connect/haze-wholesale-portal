@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { AnnouncementView } from '@/lib/announcements';
 
-const LABEL = { DEAL: 'Deal', DELAY: 'Delay', NEWS: 'News' } as const;
+const LABEL = { DEAL: 'Deal', DELAY: 'Delay/Back Order', NEWS: 'News' } as const;
 const ICON = {
   DEAL: <><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z" /><circle cx="7.5" cy="7.5" r="1.5" /></>,
   DELAY: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
@@ -12,7 +12,7 @@ const ICON = {
 
 export function AnnouncementFeed({ items }: { items: AnnouncementView[] }) {
   const [filter, setFilter] = useState<'ALL' | keyof typeof LABEL>('ALL');
-  const tabs = [['ALL', 'All'], ['DEAL', 'Deals'], ['DELAY', 'Delays'], ['NEWS', 'News']] as const;
+  const tabs = [['ALL', 'All'], ['DEAL', 'Deals'], ['DELAY', 'Delay/Back Order'], ['NEWS', 'News']] as const;
   const shown = items.filter(a => filter === 'ALL' || a.type === filter);
   return (
     <section className="panel" id="news" aria-labelledby="news-h">
@@ -38,7 +38,7 @@ export function AnnouncementFeed({ items }: { items: AnnouncementView[] }) {
           </div>
         </article>
       )) : (
-        <p className="empty">{items.length ? 'Nothing in this category right now.' : 'No announcements yet. Deals, delays and news from our team will show up here.'}</p>
+        <p className="empty">{items.length ? 'Nothing in this category right now.' : 'No announcements yet. Deals, delays, back orders and news from our team will show up here.'}</p>
       )}
     </section>
   );

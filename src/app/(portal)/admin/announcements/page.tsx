@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
 const ymd = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
-const TYPE_LABEL = { DEAL: 'Deal', DELAY: 'Delay', NEWS: 'News' } as const;
+const TYPE_LABEL = { DEAL: 'Deal', DELAY: 'Delay/Back Order', NEWS: 'News' } as const;
 
 export default async function AnnouncementsAdmin({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const editId = Number((await searchParams).edit) || null;
@@ -29,7 +29,7 @@ export default async function AnnouncementsAdmin({ searchParams }: { searchParam
       <div className="page-head">
         <div>
           <h1 className="display">Announcements</h1>
-          <p>Deals, delays and news on every buyer’s home page. One announcement can be pinned as the banner at the top.</p>
+          <p>Deals, delays, back orders and news on every buyer’s home page. One announcement can be pinned as the banner at the top.</p>
         </div>
       </div>
       <div className="two">

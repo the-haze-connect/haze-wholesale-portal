@@ -27,7 +27,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       {pinned && (
         <section className="hero" aria-label="Pinned announcement">
           <div className="hero-copy">
-            <div className="meta"><span className="tag-solid">{pinned.type === 'DEAL' ? 'Deal' : pinned.type === 'DELAY' ? 'Delay' : 'News'}</span><span>Pinned{pinned.endsAt ? ` · ends ${pinned.endsAt}` : ''}</span></div>
+            <div className="meta"><span className="tag-solid">{pinned.type === 'DEAL' ? 'Deal' : pinned.type === 'DELAY' ? 'Delay/Back Order' : 'News'}</span><span>Pinned{pinned.endsAt ? ` · ends ${pinned.endsAt}` : ''}</span></div>
             <h2 className="display">{pinned.title}</h2>
             <p>{pinned.body}</p>
           </div>

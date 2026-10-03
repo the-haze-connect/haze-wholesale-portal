@@ -32,7 +32,7 @@ export async function saveAnnouncement(_: FormResult | null, form: FormData): Pr
   const endsAt = /^\d{4}-\d{2}-\d{2}$/.test(endsRaw) ? new Date(`${endsRaw}T23:59:00-05:00`) : null;
   const email = form.get('email') === 'on';
 
-  if (!type) return { ok: false, message: 'Choose Deal, Delay or News.' };
+  if (!type) return { ok: false, message: 'Choose Deal, Delay/Back Order or News.' };
   if (!title) return { ok: false, message: 'Add a title.' };
   if (!body) return { ok: false, message: 'Add a message.' };
 
@@ -58,7 +58,7 @@ async function emailBuyers(title: string, body: string, type: string) {
     where: { role: { in: ['BUYER', 'VIEW_ONLY'] }, account: { status: 'ACTIVE' } },
     select: { email: true },
   });
-  const label = type === 'DEAL' ? 'New deal' : type === 'DELAY' ? 'Heads up' : 'News';
+  const label = type === 'DEAL' ? 'New deal' : type === 'DELAY' ? 'Delay/back order' : 'News';
   const { text, html } = linkEmail({ heading: title, intro: body, button: 'Open Haze Wholesale', url: `${appUrl()}/`, note: 'You’re getting this because you have a Haze Wholesale login.' });
   let ok = 0, failed = 0;
   for (const b of buyers) {

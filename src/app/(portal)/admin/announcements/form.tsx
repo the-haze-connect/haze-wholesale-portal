@@ -18,7 +18,7 @@ export interface AnnouncementDraft {
 }
 
 const CATEGORIES = ['Flower', 'Pre-Rolls', 'Vapes', 'Concentrates', 'Edibles', 'Bulk Flower'];
-const TYPE_LABEL = { DEAL: 'Deal', DELAY: 'Delay', NEWS: 'News' } as const;
+const TYPE_LABEL = { DEAL: 'Deal', DELAY: 'Delay/Back Order', NEWS: 'News' } as const;
 
 export function AnnouncementForm({ draft }: { draft: AnnouncementDraft }) {
   const [state, action, pending] = useActionState<FormResult | null, FormData>(saveAnnouncement, null);
