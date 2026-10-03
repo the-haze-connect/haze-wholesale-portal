@@ -60,6 +60,10 @@ B2B ordering portal for The Haze Connect and Totally Baked wholesale accounts. O
 
 - **Reorder these items** on any past order, and **Reorder** on the home page for a shop's last order, add the same cases and bag sizes to the cart (on top of what's there) at today's prices. Quantities are capped at current HQ stock; sold-out or discontinued items are left out with a note. Free samples aren't repeated.
 
+## Data health
+
+- **Admin → Data health** lists what to fix in Order Time, each with why it matters, how to fix it and a CSV: case items with a $0 price (hidden from the portal), missing Distro prices (charged base instead), accounts with no or unreadable ship-to state, accounts in blocked states, outdated or missing price levels, and accounts with no ship-to address record (their orders can't post to Order Time). Updates with every sync.
+
 ## Next steps
 
 

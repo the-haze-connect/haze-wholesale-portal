@@ -54,6 +54,7 @@ export async function applySnapshot(db: PrismaClient, snap: Snapshot) {
   for (const a of snap.accounts) {
     const data = {
       name: a.name, customerType: a.customerType, terms: a.terms, shipState: a.shipState, licenseNumber: a.licenseNumber,
+      rawShipState: a.rawShipState?.trim() || null, otPriceLevel: a.priceLevel ?? null,
       priceLevelId: a.priceLevelHonored && a.priceLevel ? levelIds.get(a.priceLevel) ?? null : null,
       repId: a.rep ? repIds.get(a.rep) ?? null : null,
     };

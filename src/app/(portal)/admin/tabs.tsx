@@ -11,6 +11,7 @@ export function AdminTabs({ counts }: { counts: { waiting: number; earned: numbe
     ['/admin/products', 'Products'],
     ['/admin/accounts', 'Accounts'],
     ['/admin/commissions', 'Commissions', counts.earned],
+    ['/admin/health', 'Data health'],
     ['/invites', 'Invites'],
   ];
   return (

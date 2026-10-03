@@ -65,6 +65,8 @@ model Account {
   rep            Rep?          @relation(fields: [repId], references: [id])
   terms          String?
   shipState      String? // normalized 2-letter code
+  rawShipState   String? // as typed in Order Time, for the data health report
+  otPriceLevel   String? // Order Time price level name, even if outdated
   licenseNumber  String?
   licenseExpires DateTime?
   status         AccountStatus @default(PENDING)
