@@ -56,9 +56,12 @@ B2B ordering portal for The Haze Connect and Totally Baked wholesale accounts. O
 - Every 15 minutes the portal asks ShipStation (API v1, read-only) about approved orders that are in Order Time but not shipped, matched by the Order Time sales order number (a prefix like "SO-" is fine). Shipped orders show **Shipped** with carrier and tracking links; admins can click **Check ShipStation now** on an order.
 - Needs `SHIPSTATION_API_KEY` and `SHIPSTATION_API_SECRET`. Buyer ship emails stay with ShipStation unless `PORTAL_SHIP_EMAILS=1`.
 
+## Reorder
+
+- **Reorder these items** on any past order, and **Reorder** on the home page for a shop's last order, add the same cases and bag sizes to the cart (on top of what's there) at today's prices. Quantities are capped at current HQ stock; sold-out or discontinued items are left out with a note. Free samples aren't repeated.
+
 ## Next steps
 
-- Reorder from a past order.
 
 ## Run locally
 

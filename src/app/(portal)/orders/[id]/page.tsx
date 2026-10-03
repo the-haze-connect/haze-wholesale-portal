@@ -9,6 +9,8 @@ import type { Tracking } from '@/lib/shipstation';
 import { ACH_SETTING, getSetting } from '@/lib/orders';
 import { CARD_FEE_PERCENT } from '@/lib/rules';
 import { requireUser } from '@/lib/session';
+import { reorderPlan } from '@/lib/reorder';
+import { ReorderButton } from '@/components/reorder-button';
 import { approvePaidOrder, cancelUnpaidOrder, checkShipping, retryOrderTime } from '../actions';
 import { OrderActionButton } from '../forms';
 
@@ -28,6 +30,9 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   });
   if (!order) notFound();
   const isAdmin = user.role === 'ADMIN';
+  const canReorder = user.role !== 'VIEW_ONLY' && order.account.status === 'ACTIVE' && order.status !== 'REJECTED';
+  const plan = canReorder ? await reorderPlan(order.id) : null;
+  const cartHref = user.role === 'BUYER' ? '/cart' : `/cart?for=${order.accountId}`;
   const canSeeCommission = isAdmin || user.role === 'REP';
   const waitingAch = order.status === 'SUBMITTED' && order.paymentMethod === 'ACH_WIRE';
   const ach = waitingAch ? await getSetting(ACH_SETTING) : null;
@@ -153,6 +158,13 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
             </section>
           )}
 
+          {plan && (
+            <section className="panel">
+              <p className="label">Order again</p>
+              <p style={{ fontSize: 13.5, color: 'var(--ink-2)', margin: '6px 0 12px' }}>Adds these cases to your cart at today’s prices. You can adjust before checkout.</p>
+              <ReorderButton lines={plan.lines} skipped={plan.skipped} cartHref={cartHref} label="Reorder these items" />
+            </section>
+          )}
           <Link className="btn btn-ghost" href="/orders">All orders</Link>
         </aside>
       </div>

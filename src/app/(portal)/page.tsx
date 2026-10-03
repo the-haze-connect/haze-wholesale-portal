@@ -10,6 +10,10 @@ import { getSamples } from '@/lib/samples';
 import { getCatalog } from '@/lib/catalog';
 import { shopContext } from '@/lib/context';
 import { requireUser } from '@/lib/session';
+import { db } from '@/lib/db';
+import { reorderPlan } from '@/lib/reorder';
+import { ReorderButton } from '@/components/reorder-button';
+import { money } from '@/components/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +24,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const cat = typeof sp.cat === 'string' ? sp.cat : undefined;
   const [items, announcements, samples, limit] = await Promise.all([getCatalog(ctx.level), getAnnouncements(), getSamples(), sampleLimit()]);
   const pinned = announcements.find(a => a.pinned);
+  const lastOrder = ctx.account && ctx.canOrder
+    ? await db.order.findFirst({ where: { accountId: ctx.account.id, status: { in: ['APPROVED', 'SUBMITTED'] } }, orderBy: { createdAt: 'desc' } })
+    : null;
+  const reorder = lastOrder ? await reorderPlan(lastOrder.id) : null;
   const inStock = items.filter(i => i.stock !== 'out').length;
 
   return (
@@ -53,6 +61,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
               <div className="stat"><small>Ships from</small><strong>Our warehouse</strong></div>
             </div>
           </div>
+          {lastOrder && reorder && (
+            <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <p className="label">Your last order</p>
+              <p style={{ margin: 0 }}><Link href={`/orders/${lastOrder.id}`}><b>#{lastOrder.id}</b></Link> · {lastOrder.createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' })} · {money(Number(lastOrder.subtotal))} · {reorder.lines.length + reorder.skipped.length} item{reorder.lines.length + reorder.skipped.length === 1 ? '' : 's'}</p>
+              <ReorderButton lines={reorder.lines} skipped={reorder.skipped} cartHref={`/cart${ctx.carry}`} label="Reorder" kind="kush" />
+            </div>
+          )}
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <p className="label">Restocking?</p>
             <p style={{ margin: 0, color: 'var(--ink-2)' }}>Type case counts down one list instead of browsing.</p>
