@@ -15,8 +15,11 @@ export async function requestLoginLink(form: FormData) {
   if (recent >= 5) redirect('/login?error=busy');
 
   let user = await db.buyerUser.findUnique({ where: { email } });
-  if (!user && adminEmails().includes(email)) {
-    user = await db.buyerUser.create({ data: { email, role: 'ADMIN' } });
+  if (adminEmails().includes(email)) {
+    // Everyone in ADMIN_EMAILS signs in as an admin, even if they had another kind of login
+    user = user
+      ? (user.role === 'ADMIN' ? user : await db.buyerUser.update({ where: { id: user.id }, data: { role: 'ADMIN', accountId: null, repId: null } }))
+      : await db.buyerUser.create({ data: { email, role: 'ADMIN' } });
   }
 
   // Same response either way, so the form can't be used to discover which emails have accounts.
