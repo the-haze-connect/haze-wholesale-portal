@@ -19,6 +19,10 @@ export default async function AccountAdmin({ params }: { params: Promise<{ id: s
     include: { priceLevel: true, rep: true, users: { orderBy: { createdAt: 'asc' } }, orders: { orderBy: { createdAt: 'desc' }, take: 25 } },
   });
   if (!a) notFound();
+  const [otCount, lastOt] = await Promise.all([
+    db.otOrder.count({ where: { accountId: a.id } }),
+    db.otOrder.findFirst({ where: { accountId: a.id }, orderBy: { date: 'desc' }, select: { date: true, docNo: true } }),
+  ]);
   const approved = a.orders.filter(o => o.status === 'APPROVED');
   const portalSales = approved.reduce((s, o) => s + Number(o.subtotal), 0);
   const blocked = a.shipState && BLOCKED_STATES.includes(a.shipState);
@@ -123,7 +127,11 @@ export default async function AccountAdmin({ params }: { params: Promise<{ id: s
           </section>
 
           <section className="panel">
-            <div className="panel-head"><h2 className="display">Portal orders</h2></div>
+            <div className="panel-head">
+              <h2 className="display">Portal orders</h2>
+              <Link className="btn btn-ghost btn-sm" href={`/orders?account=${a.id}`}>Full order history ({otCount + a.orders.length > 0 ? `${otCount} in Order Time` : 'none yet'})</Link>
+            </div>
+            {lastOt && <p className="muted" style={{ margin: '0 0 10px', fontSize: 13.5 }}>Last Order Time sales order: <Link href={`/orders/ot/${lastOt.docNo}`}>SO {lastOt.docNo}</Link> on {lastOt.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>}
             {a.orders.length ? (
               <div className="table-wrap">
                 <table>

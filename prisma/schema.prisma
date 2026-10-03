@@ -76,6 +76,7 @@ model Account {
   status         AccountStatus @default(PENDING)
   users          BuyerUser[]
   orders         Order[]
+  otOrders       OtOrder[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 }
@@ -337,4 +338,34 @@ model Document {
   data      Bytes
   bytes     Int
   createdAt DateTime @default(now())
+}
+
+/**
+ * Sales orders from Order Time (all of them, including ones placed before the portal).
+ */
+model OtOrder {
+  docNo         Int       @id
+  otCustomerId  Int
+  accountId     Int?
+  account       Account?  @relation(fields: [accountId], references: [id])
+  repOtId       Int?
+  repName       String?
+  date          DateTime
+  promiseDate   DateTime?
+  status        String?
+  customerPO    String?
+  shipMethod    String?
+  shipAmount    Decimal?  @db.Decimal(12, 2)
+  total         Decimal?  @db.Decimal(12, 2) // null until line items are loaded
+  lineCount     Int?
+  lines         Json? // [{ itemId, code, description, quantity, price, uom }]
+  linesAt       DateTime?
+  portalOrderId Int?
+  tracking      Json?
+  trackingAt    DateTime?
+  syncedAt      DateTime  @default(now())
+
+  @@index([accountId, date])
+  @@index([otCustomerId])
+  @@index([date])
 }

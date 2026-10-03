@@ -110,6 +110,11 @@ export class OrderTime {
     return this.request('PUT', `lead/ConvertToCustomer?id=${leadId}`);
   }
 
+  /** One sales order with its line items. */
+  getSalesOrder(docNo: number): Promise<Record<string, unknown>> {
+    return this.request('GET', `salesorder?docNo=${docNo}`);
+  }
+
   getCustomer(id: number): Promise<{ Id: number; Name: string } & Record<string, unknown>> {
     return this.request('GET', `customer?id=${id}`);
   }

@@ -34,6 +34,19 @@ export async function register() {
     });
   }
 
+  if (process.env.ORDERTIME_API_KEY && process.env.DISABLE_ORDER_HISTORY !== '1') {
+    const [{ syncOtOrders, backfillOtLines }, { db }] = await Promise.all([import('./lib/sync/ot-orders'), import('./lib/db')]);
+    every('orders', Number(process.env.ORDER_HISTORY_MINUTES ?? 30), 90_000, async () => {
+      // Full history on first run and once a day; newest orders otherwise
+      const last = await db.setting.findUnique({ where: { key: 'ot_orders_full_at' } });
+      const full = !last || Date.now() - new Date(last.value).getTime() > 24 * 3600_000;
+      const r = await syncOtOrders(db, full ? 'full' : 'recent');
+      if (full) await db.setting.upsert({ where: { key: 'ot_orders_full_at' }, create: { key: 'ot_orders_full_at', value: new Date().toISOString() }, update: { value: new Date().toISOString() } });
+      const lines = await backfillOtLines(db);
+      return `${r.mode} sync: ${r.saved} Order Time sales orders${lines ? `, loaded items for ${lines}` : ''}`;
+    });
+  }
+
   if (process.env.SHIPSTATION_API_KEY && process.env.DISABLE_SHIPPING_SYNC !== '1') {
     const [{ syncShipping }, { db }] = await Promise.all([import('./lib/sync/shipping'), import('./lib/db')]);
     every('shipping', Number(process.env.SHIPPING_SYNC_MINUTES ?? 15), 60_000, async () => {

@@ -11,7 +11,8 @@ import { getCatalog } from '@/lib/catalog';
 import { shopContext } from '@/lib/context';
 import { requireUser } from '@/lib/session';
 import { db } from '@/lib/db';
-import { reorderPlan } from '@/lib/reorder';
+import { reorderPlan, reorderPlanForOt } from '@/lib/reorder';
+import type { OtLine } from '@/lib/sync/ot-orders';
 import { ReorderButton } from '@/components/reorder-button';
 import { money } from '@/components/format';
 
@@ -27,7 +28,19 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const lastOrder = ctx.account && ctx.canOrder
     ? await db.order.findFirst({ where: { accountId: ctx.account.id, status: { in: ['APPROVED', 'SUBMITTED'] } }, orderBy: { createdAt: 'desc' } })
     : null;
-  const reorder = lastOrder ? await reorderPlan(lastOrder.id) : null;
+  // The newest Order Time sales order with items loaded, if it's newer than the last portal order
+  const lastOt = ctx.account && ctx.canOrder
+    ? await db.otOrder.findFirst({
+        where: { accountId: ctx.account.id, portalOrderId: null, linesAt: { not: null }, NOT: { status: { contains: 'void', mode: 'insensitive' } }, ...(lastOrder ? { date: { gt: lastOrder.createdAt } } : {}) },
+        orderBy: [{ date: 'desc' }, { docNo: 'desc' }],
+      })
+    : null;
+  const reorder = lastOt
+    ? await reorderPlanForOt((lastOt.lines as OtLine[] | null) ?? [], ctx.account!.id)
+    : lastOrder ? await reorderPlan(lastOrder.id) : null;
+  const last = lastOt
+    ? { href: `/orders/ot/${lastOt.docNo}`, label: `SO ${lastOt.docNo}`, date: lastOt.date, tz: 'UTC', total: lastOt.total === null ? null : Number(lastOt.total) }
+    : lastOrder ? { href: `/orders/${lastOrder.id}`, label: `#${lastOrder.id}`, date: lastOrder.createdAt, tz: 'America/Chicago', total: Number(lastOrder.subtotal) } : null;
   const inStock = items.filter(i => i.stock !== 'out').length;
 
   return (
@@ -61,10 +74,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
               <div className="stat"><small>Ships from</small><strong>Our warehouse</strong></div>
             </div>
           </div>
-          {lastOrder && reorder && (
+          {last && reorder && (
             <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <p className="label">Your last order</p>
-              <p style={{ margin: 0 }}><Link href={`/orders/${lastOrder.id}`}><b>#{lastOrder.id}</b></Link> · {lastOrder.createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' })} · {money(Number(lastOrder.subtotal))} · {reorder.lines.length + reorder.skipped.length} item{reorder.lines.length + reorder.skipped.length === 1 ? '' : 's'}</p>
+              <p style={{ margin: 0 }}><Link href={last.href}><b>{last.label}</b></Link> · {last.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(last.date.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}), timeZone: last.tz })}{last.total !== null ? ` · ${money(last.total)}` : ''} · {reorder.lines.length + reorder.skipped.length} item{reorder.lines.length + reorder.skipped.length === 1 ? '' : 's'}</p>
               <ReorderButton lines={reorder.lines} skipped={reorder.skipped} cartHref={`/cart${ctx.carry}`} label="Reorder" kind="kush" />
             </div>
           )}

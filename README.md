@@ -70,6 +70,12 @@ B2B ordering portal for The Haze Connect and Totally Baked wholesale accounts. O
 - Each request creates a **Lead in Order Time** (`POST /lead`) with addresses, rep and a note holding the details. The shop gets a confirmation email; the team (and the named rep, if they have a login) get an alert.
 - **Admin → Requests**: review, see possible duplicate accounts, then **Approve** as a new customer (converts the lead with `PUT /lead/ConvertToCustomer`, sets rep and price level on the customer, creates the portal account and buyer login, emails the invite) or as an existing account; or **Decline** with an optional email. Failed lead creation can be retried.
 
+## Order history
+- Every Order Time sales order is imported into `OtOrder`, including ones from before the portal: a full import on first start and once a day, the newest 2,000 every 30 minutes (`ORDER_HISTORY_MINUTES`; `DISABLE_ORDER_HISTORY=1` turns it off).
+- Line items load in the background (40 orders a run) and on demand when someone opens an order. Tracking comes from ShipStation when keys are set.
+- `/orders` merges portal orders and Order Time orders, searchable by SO number, PO or shop. Buyers see their shop; reps see their shops plus any order with them as the rep; admins see all (`/orders?account=<id>` for one shop).
+- `/orders/ot/<SO>` shows items, totals, tracking and a Reorder button. The first sync logs the sales order field names (`[orders] Order Time sales order fields:`) so parsing can be checked.
+
 ## Next steps
 
 
